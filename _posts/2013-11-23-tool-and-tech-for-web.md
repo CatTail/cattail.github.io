@@ -67,7 +67,7 @@ CLI
 
 Resouces
 
-* `>info bash`
+* `> info bash`
 
 
 Git
