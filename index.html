@@ -12,7 +12,11 @@ layout: default
         <span class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</span>
 
         <h2>
-          <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
+            {% if post.external_url %}
+                <a class="post-link" onclick="_gaq.push(['_trackpageview', '{{ post.url }}']);" href="{{ post.external_url | prepend: site.baseurl }}">{{ post.title }}</a>
+            {% else %}
+                <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
+            {% endif %}
         </h2>
       </li>
     {% endfor %}
