@@ -282,7 +282,7 @@ uv_run(env->event_loop(), UV_RUN_DEFAULT);
 #### 深入libuv
 理解libuv我们分两条线索, 任务的提交和任务的处理
 
-任务提交
+**任务提交**
 
 ```cpp
 uv_fs_read (env->event_loop(), &req_wrap->req_, fd , buf , len , pos , After);
@@ -386,10 +386,7 @@ static void post(QUEUE* q) {
   while (0)
 ```
 
-
-
-
-
+**任务处理**
 
 在src/unix/loop.c中定义了创建event loop的方法
 
@@ -517,20 +514,27 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 }
 ```
 
-[invoke uv__epoll_ctl][invoke uv__epoll_ctl]
-
-[invoke uv__epoll_wait][invoke uv__epoll_wait]
+* [invoke uv__epoll_ctl][invoke uv__epoll_ctl]
+* [invoke uv__epoll_wait][invoke uv__epoll_wait]
 
 **Things to be explained**
 
 * watcher
 * thread model
 
+**watcher**
+
+[只有三个类型的watcher][define watcher]
+
+* prepare
+* check
+* idle
+
 
 ## 结构参考
 
 ### node_module_struct
-C++编写的模块结构, 其中`register_context_func`用于初始化模块上下文
+c编写的模块结构, 其中`register_context_func`用于初始化模块上下文
 
 ```c
 struct node_module_struct {
@@ -540,6 +544,55 @@ struct node_module_struct {
   node::addon_register_func register_func;
   node::addon_context_register_func register_context_func;
   const char *modname;
+};
+```
+
+### uv_loop_s
+event loop数据结构, uv核心数据结构
+
+```c
+struct uv_loop_s {
+  /* User data - use this for whatever. */
+  void* data;
+  /* Loop reference counting */
+  unsigned int active_handles;
+  void* handle_queue[2];
+  void* active_reqs[2];
+  /* Internal flag to signal loop stop */
+  unsigned int stop_flag;
+  unsigned long flags;
+  int backend_fd;
+  void* pending_queue[2];
+  void* watcher_queue[2];
+  uv__io_t** watchers;
+  unsigned int nwatchers;
+  unsigned int nfds;
+  void* wq[2];
+  uv_mutex_t wq_mutex;
+  uv_async_t wq_async;
+  uv_handle_t* closing_handles;
+  void* process_handles[1][2];
+  void* prepare_handles[2];
+  void* check_handles[2];
+  void* idle_handles[2];
+  void* async_handles[2];
+  struct uv__async async_watcher;
+  struct uv__timers {
+      struct uv_timer_s* rbh_root;
+  }
+  timer_handles;
+  uint64_t time;
+  int signal_pipefd[2];
+  uv__io_t signal_io_watcher;
+  uv_signal_t child_watcher;
+  int emfile_fd;
+  uint64_t timer_counter;
+  uv_thread_t cf_thread;
+  void* _cf_reserved;
+  void* cf_state;
+  uv_mutex_t cf_mutex;
+  uv_sem_t cf_sem;
+  void* cf_signals[2];
 };
 ```
 
@@ -570,3 +623,4 @@ struct node_module_struct {
 [invoke NODE_EXT_LIST]: https://github.com/joyent/node/blob/v0.11.9/src/node_extensions.cc#L48
 [invoke uv__epoll_ctl]: https://github.com/joyent/node/blob/v0.11.9/deps/uv/src/unix/linux-core.c#L168
 [invoke uv__epoll_wait]: https://github.com/joyent/node/blob/v0.11.9/deps/uv/src/unix/linux-core.c#L187
+[define watcher]: https://github.com/joyent/node/blob/v0.11.9/deps/uv/src/unix/loop-watcher.c#L61
