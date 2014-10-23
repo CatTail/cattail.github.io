@@ -1,0 +1,37 @@
+{
+  "name": "presenter",
+  "main": "index.js",
+  "version": "0.1.2",
+  "homepage": "https://github.com/CatTail/presenter",
+  "authors": [
+    "zhongchiyu <zhongchiyu@gmail.com>"
+  ],
+  "description": "Dead simple slide remote control & synchronization",
+  "keywords": [
+    "slide",
+    "present"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "qrcodejs": "~0.1.0",
+    "quojs": "~3.0.5",
+    "firebase": "~1.1.2"
+  },
+  "_release": "0.1.2",
+  "_resolution": {
+    "type": "version",
+    "tag": "v0.1.2",
+    "commit": "79aad3437ce58ea787a6b7cec5cf4f280fd74047"
+  },
+  "_source": "git://github.com/CatTail/presenter.git",
+  "_target": "~0.1.2",
+  "_originalSource": "presenter",
+  "_direct": true
+}
