@@ -3,13 +3,8 @@
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="keywords" content="remark,remarkjs,markdown,slideshow,presentation" />
-    <meta name="description" content="A simple, in-browser, markdown-driven slideshow tool." />
-    <title>Remark</title>
-    <style type="text/css">
-      @import url(//fonts.googleapis.com/css?family=Droid+Serif);
-      @import url(//fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
-      @import url(//fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
-    </style>
+    <meta name="description" content="{{ site.description }}">
+    <title>{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}</title>
     <link rel="stylesheet" href="{{ site.baseurl }}/css/slide.css" type="text/css" />
     <script>
         var _gaq = _gaq || [];  
@@ -61,5 +56,10 @@
         }) ;
     </script>
     <script src="{{ site.baseurl }}/bower_components/presenter/dist/presenter.min.js" type="text/javascript" charset="utf-8"></script>
+    <style type="text/css">
+      @import url(//fonts.googleapis.com/css?family=Droid+Serif);
+      @import url(//fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(//fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+    </style>
   </body>
 </html>
