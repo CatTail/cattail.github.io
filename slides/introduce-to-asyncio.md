@@ -539,7 +539,7 @@ fs.read(cb) -> binding.read() -> Read() -> uv_fs_read(cb) -- after a while -> cb
 * 主线程空先后执行完成任务的回调
 
 ---
-![event loop](/assets/event-loop.png)
+![node thread model](/assets/node-thread-model.png)
 
 ---
 ## 小结
