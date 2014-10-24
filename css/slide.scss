@@ -126,15 +126,3 @@ blockquote {
     letter-spacing: -1px;
     font-style: italic;
 }
-
-// qrcode
-#qrcode {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 100;
-}
-
-#qrcode.hidden {
-    display: none;
-}
