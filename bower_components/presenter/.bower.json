@@ -1,7 +1,7 @@
 {
   "name": "presenter",
   "main": "index.js",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "homepage": "https://github.com/CatTail/presenter",
   "authors": [
     "zhongchiyu <zhongchiyu@gmail.com>"
@@ -21,17 +21,17 @@
   ],
   "dependencies": {
     "qrcodejs": "~0.1.0",
-    "quojs": "~3.0.5",
-    "firebase": "~1.1.2"
+    "firebase": "~1.1.2",
+    "hammerjs": "~2.0.4"
   },
-  "_release": "0.1.2",
+  "_release": "0.2.0",
   "_resolution": {
     "type": "version",
-    "tag": "v0.1.2",
-    "commit": "79aad3437ce58ea787a6b7cec5cf4f280fd74047"
+    "tag": "v0.2.0",
+    "commit": "832361b30dac5d95f8f7676290082ae8d3f38c10"
   },
   "_source": "git://github.com/CatTail/presenter.git",
-  "_target": "~0.1.2",
+  "_target": "~0.2.0",
   "_originalSource": "presenter",
   "_direct": true
 }
