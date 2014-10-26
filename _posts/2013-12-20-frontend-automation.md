@@ -1,6 +1,6 @@
 ---
 layout: post
-title: frontend automation
+title: Frontend automation
 date: 2013-06-17 17:06:25
 categories: tech
 ---
