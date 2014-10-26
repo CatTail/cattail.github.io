@@ -1,6 +1,6 @@
 ---
 layout: post
-title: awesome-web
+title: Awesome-web
 date: 2013-11-23 09:13:28
 categories: tech
 ---
