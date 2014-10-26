@@ -1,43 +1,52 @@
 ---
 layout: post
-title: Javascript library的现状和明天
+title: Javascript library - today and future
 date: 2013-06-17 17:06:25
 categories: tech
 ---
-本文侧重描述brower side javascript library，在阅读了一些库的文档和源码后作出的总结。这些库包括kissy，tangme，jx，seajs(国内)，underscore，backbone，async，dojo，moto，ender，closure(国外)
+This article focus on browser side javascript library, by roughly reading the document and source code of these libraries, including
 
-## 现状
-从功能上来讲，主要有两类库
+* kissy
+* tangme
+* jx
+* seajs
+* underscore
+* backbone
+* async
+* dojo
+* moto
+* ender
+* google closure library
 
-* 功能全面
-* 功能专一
+## Today
+Classified by functionality, there are two kinds of library
 
-功能全面的库，如jx，dojo，jquery(更多的是dom操作)提供了一整套的解决方案，包括模块载入，核心对象功能拓展，浏览器兼容性，dom操作，网络访问等等。这类库的优点是提供了完整的解决方案，缺点则是学习成本高，维护成本更大。
+* Full functional library: library contain all the function we need
+* Single functional library: library focus on particular problem
 
-功能专一的库，用于解决特定需求。如seajs解决模块问题，async侧重于解决异步调用，underscore拓展核心对象以及增加了一些编程范式。通过组织不同的专一库，可以完成使用功能全面库所能完成的功能。因此出现了如ender这样的no library library用于将库组织起来。
+Full functional library tends to solve all problems, such as jx, dojo, jquery provide a suit of solutions including module load, core object extend, browser compability, DOM operation and ajax etc. They provide a lot of  functions, but it's learning curve is not easy, and hard to maintain.
 
-## 权衡
-相比较extjs这样功能全面而又臃肿的库，我更青睐于使用功能专一的库来完成需求，原因有
+Single functional library tends to solve particular problem, such as seajs only solve module load, async focus on asynchrounous problem, underscore providing FP suger. By using several single functional library, we can do whatever full functional library can do. That's why there are ender which is no library library only used for organize libraries.
 
-### 谁的功能更强大
-通过组织各种专一库，可以完成全面库所不具有的功能，prototype并不提供异步方面的解决方案。
+## Compare
+I prefer to single functional library than full functional library such as extjs, because:
 
-### 谁做的更好
-我认为专一库能够在性能，bug解决以及contribute上有更大的优势。
+* Who is powerful: by organize single functional library, we have full functional library
+* Who can do better: single functional library could do better by performance, bug fix because there contributor are easier to understand what they do.
 
-虽然专一库拥有很多优势，更好的使用他们也面对一些问题：
+Through, single functional library faced with some problem:
 
-* 模块依赖
-* 命名空间
-* 代码规范
-* 编译压缩
+* how to maintian module dependencies
+* namespace
+* code style
+* compilation and compression
 
-面对这些问题，也有相应的专一库或工具（包括其他语言编写的工具）来解决问题
+and also there are solutions:
 
 * seajs, requirejs
-* google closure的依赖, 模块, 编译等整套工具
+* google closure deps, module, compile tool suit
 * ender
 
-## 未来
-引用一句ender的一句话
+## Future
+By ender
 > In the browser - small, loosely coupled modules are the future and large, tightly-bound monolithic libraries are the past!
