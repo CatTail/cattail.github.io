@@ -1,10 +1,10 @@
 ---
 layout: post
-title: Nodejs源码阅读笔记
+title: Node.js源码阅读笔记
 date: 2014-10-16 17:56
 categories: tech
 ---
-本文通过阅读Nodejs([版本0.11.9][node])的代码, 试图理解两个问题
+本文通过阅读Node.js([版本0.11.9][node])的代码, 试图理解两个问题
 
 * C++和JS是如何交互的
 * 异步是如何实现的, event loop在其中充当什么角色
@@ -12,15 +12,14 @@ categories: tech
 笔记
 
 * [C++和Javascript交互](#C++和Javascript交互)
-* [Nodejs初始化](#nodejs初始化)
-    * [Nodejs模块](#nodejs模块)
+* [Node.js初始化](#node.js初始化)
+    * [Node.js模块](#node.js模块)
     * [process.binding](#process.binding)
 * [异步实现](#异步实现)
     * [追踪fs.readFile回调](#追踪fs.readFile回调)
     * [创建并运行event loop](#创建并运行event loop)
     * [深入libuv](#深入libuv)
 * [总结](#总结)
-* [结构参考](#结构参考)
 * [相关参考](#相关参考)
 
 ### C++和Javascript交互
@@ -37,7 +36,7 @@ Handle<ObjectTemplate> global = ObjectTemplate::New();
 global->Set(String::New("log"), FunctionTemplate::New(LogCallback));
 ```
 
-在javascript中, 就可以使用log函数输出日志 [source][invoke log]
+在Javascript中, 就可以使用log函数输出日志 [source][invoke log]
 
 ```cpp
 log("Processing " + request.host + request.path + " from " + request.referrer + "@" + request.userAgent);
@@ -68,8 +67,8 @@ v8::Local<v8::Function> process = v8::Local<v8::Function>::New(GetIsolate(), pro
 Handle<Value> result = process->Call(context->Global(), argc, argv);
 ```
 
-### Nodejs初始化
-Nodejs的初始化调用链是这样的, [main][main] -> [Start][node:Start] -> [CreateEnvironment][node:CreateEnvironment] -> [Load][node:Load],
+### Node.js初始化
+Node.js的初始化调用链是这样的, [main][main] -> [Start][node:Start] -> [CreateEnvironment][node:CreateEnvironment] -> [Load][node:Load],
 
 在Start过程中启用了event loop
 
@@ -93,10 +92,10 @@ int Start(int argc, char** argv) {
 }
 ```
 
-在[node:Load][node:Load]加载了[node.js][node.js], [node.js][node.js]负责初始化Nodejs, 包括初始化全局变量和函数, 如setTimeout, nextTick等.
+在[node:Load][node:Load]加载了[node.js][node.js], [node.js][node.js]负责初始化Node.js, 包括初始化全局变量和函数, 如setTimeout, nextTick等.
 
-#### Nodejs模块
-Nodejs中, 模块是通过`require`来加载的, 而其背后的实现在[src/node.js][NativeModule.require]中.
+#### Node.js模块
+Node.js中, 模块是通过`require`来加载的, 而其背后的实现在[src/node.js][NativeModule.require]中.
 
 `NativeModule.require`首先检测模块是否在缓存中(已经被require的模块就会缓存), 如果没有则读取该模块文件内容, 并在当前上下文中执行.
 
@@ -130,10 +129,10 @@ function runInThisContext(code, options) {
 
 追查源码, 可以在[node_contextify.cc][node_contextify]看到contextify最终的C++实现.
 
-这里可以看到, `process.binding`作为一个桥梁, 使得Nodejs可以调用C++中实现的代码.
+这里可以看到, `process.binding`作为一个桥梁, 使得Node.js可以调用C++中实现的代码.
 
 #### process.binding
-重新review之前提到的Nodejs初始化代码, 可以发现`process.binding`的实现. 
+重新review之前提到的Node.js初始化代码, 可以发现`process.binding`的实现. 
 
 在[node:CreateEnvironment][node:CreateEnvironment]过程中, 会初始化`process`对象
 
@@ -236,7 +235,7 @@ UV_EXTERN int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file,void* buf, 
 
 #### 创建运行event loop
 
-event loop对象在Nodejs初始化过程中使用`uv_default_loop`创建,
+event loop对象在Node.js初始化过程中使用`uv_default_loop`创建,
 
 ```cpp
 Environment* env = Environment::New(context);
@@ -291,7 +290,7 @@ inline uv_loop_t* Environment::IsolateData::event_loop() const {
 }
 ```
 
-在[node:Start][node:Start]中启用事件循环(见[Nodejs初始化](#nodejs初始化))
+在[node:Start][node:Start]中启用事件循环(见[Node.js初始化](#Node.js初始化))
 
 #### 深入libuv
 理解libuv分两条线索, 任务的提交和任务的处理.
@@ -465,79 +464,16 @@ while there are still events to process:
 ### 总结
 
 * C++能够通过v8提供的API获取并修改Javascript执行上下文
-* 暴露在Nodejs环境中的很多模块最终实现都使用C++编写
-* 在Nodejs中调用IO接口后, 会将任务提交到线程池中执行. Nodejs程序猿看到的是单线程的Javascript代码, 但是最终任务是多线程处理的.
+* 暴露在Node.js环境中的很多模块最终实现都使用C++编写
+* 在Node.js中调用IO接口后, 会将任务提交到线程池中执行. Node.js程序员看到的是单线程的Javascript代码, 但是最终任务是多线程处理的.
 * libuv实现基于事件的异步IO
-
-### 结构参考
-
-#### node_module_struct
-c编写的模块结构, 其中`register_context_func`用于初始化模块上下文
-
-```c
-struct node_module_struct {
-  int version;
-  void *dso_handle;
-  const char *filename;
-  node::addon_register_func register_func;
-  node::addon_context_register_func register_context_func;
-  const char *modname;
-};
-```
-
-#### uv_loop_s
-event loop数据结构, uv核心数据结构
-
-```c
-struct uv_loop_s {
-  /* User data - use this for whatever. */
-  void* data;
-  /* Loop reference counting */
-  unsigned int active_handles;
-  void* handle_queue[2];
-  void* active_reqs[2];
-  /* Internal flag to signal loop stop */
-  unsigned int stop_flag;
-  unsigned long flags;
-  int backend_fd;
-  void* pending_queue[2];
-  void* watcher_queue[2];
-  uv__io_t** watchers;
-  unsigned int nwatchers;
-  unsigned int nfds;
-  void* wq[2];
-  uv_mutex_t wq_mutex;
-  uv_async_t wq_async;
-  uv_handle_t* closing_handles;
-  void* process_handles[1][2];
-  void* prepare_handles[2];
-  void* check_handles[2];
-  void* idle_handles[2];
-  void* async_handles[2];
-  struct uv__async async_watcher;
-  struct uv__timers {
-      struct uv_timer_s* rbh_root;
-  }
-  timer_handles;
-  uint64_t time;
-  int signal_pipefd[2];
-  uv__io_t signal_io_watcher;
-  uv_signal_t child_watcher;
-  int emfile_fd;
-  uint64_t timer_counter;
-  uv_thread_t cf_thread;
-  void* _cf_reserved;
-  void* cf_state;
-  uv_mutex_t cf_mutex;
-  uv_sem_t cf_sem;
-  void* cf_signals[2];
-};
-```
 
 ### 相关参考
 
 * [node][node]
 * [libuv][libuv]
+* [An Introduction to libuv](http://nikhilm.github.io/uvbook/)
+* [libevent](http://libevent.org/)
 
 
 [node]: https://github.com/joyent/node/tree/v0.11.9
