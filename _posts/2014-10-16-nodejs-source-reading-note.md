@@ -466,6 +466,7 @@ while there are still events to process:
 * C++能够通过v8提供的API获取并修改Javascript执行上下文
 * 暴露在Node.js环境中的很多模块最终实现都使用C++编写
 * 在Node.js中调用IO接口后, 会将任务提交到线程池中执行. Node.js程序员看到的是单线程的Javascript代码, 但是最终任务是多线程处理的.
+![thread model](/assets/node-thread-model.png)
 * libuv实现基于事件的异步IO
 
 ### 相关参考
