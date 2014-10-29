@@ -9,20 +9,20 @@ categories: tech
 * C++和JS是如何交互的
 * 异步是如何实现的, event loop在其中充当什么角色
 
-笔记
+目录
 
-* [C++和Javascript交互](#C++和Javascript交互)
+* [C++和Javascript交互](#c++和javascript交互)
 * [Node.js初始化](#node.js初始化)
     * [Node.js模块](#node.js模块)
     * [process.binding](#process.binding)
 * [异步实现](#异步实现)
-    * [追踪fs.readFile回调](#追踪fs.readFile回调)
-    * [创建并运行event loop](#创建并运行event loop)
+    * [追踪fs.readFile回调](#追踪fs.readfile回调)
+    * [创建并运行event loop](#创建运行event-loop)
     * [深入libuv](#深入libuv)
 * [总结](#总结)
 * [相关参考](#相关参考)
 
-### C++和Javascript交互
+## C++和Javascript交互
 通过v8源码的示例[process.cc][process.cc]和[count-hosts.js][count-hosts.js], 我们可以了解C++和Javascript代码是如何进行交互的.
 
 通过在C++代码中使用v8引擎提供的接口, 可以在Javascript运行上下文中插入使用C++定义的变量(或函数); 同时, 也可以取出Javascript在此上下文中定义的变量(或函数等), 在C++代码中执行.
@@ -67,7 +67,7 @@ v8::Local<v8::Function> process = v8::Local<v8::Function>::New(GetIsolate(), pro
 Handle<Value> result = process->Call(context->Global(), argc, argv);
 ```
 
-### Node.js初始化
+## Node.js初始化
 Node.js的初始化调用链是这样的, [main][main] -> [Start][node:Start] -> [CreateEnvironment][node:CreateEnvironment] -> [Load][node:Load],
 
 在Start过程中启用了event loop
@@ -94,8 +94,8 @@ int Start(int argc, char** argv) {
 
 在[node:Load][node:Load]加载了[node.js][node.js], [node.js][node.js]负责初始化Node.js, 包括初始化全局变量和函数, 如setTimeout, nextTick等.
 
-#### Node.js模块
-Node.js中, 模块是通过`require`来加载的, 而其背后的实现在[src/node.js][NativeModule.require]中.
+### Node.js模块
+Node.js中, 模块是通过`require`来加载的, 实现代码在[src/node.js][NativeModule.require]中.
 
 `NativeModule.require`首先检测模块是否在缓存中(已经被require的模块就会缓存), 如果没有则读取该模块文件内容, 并在当前上下文中执行.
 
@@ -131,8 +131,8 @@ function runInThisContext(code, options) {
 
 这里可以看到, `process.binding`作为一个桥梁, 使得Node.js可以调用C++中实现的代码.
 
-#### process.binding
-重新review之前提到的Node.js初始化代码, 可以发现`process.binding`的实现. 
+### process.binding
+我们可以在之前提到的Node.js初始化代码中，找到`process.binding`的实现.
 
 在[node:CreateEnvironment][node:CreateEnvironment]过程中, 会初始化`process`对象
 
@@ -174,12 +174,12 @@ extern "C" {
 mod->register_context_func(exports, unused, env->context());
 ```
 
-### 异步实现
+## 异步实现
 
-#### 追踪fs.readFile回调
+### 追踪fs.readFile回调
 为了追查异步调用的实现, 我们先从一个常用的异步方法[fs.readFile][fs.readFile]开始,
 
-`fs.readFile`使用[fs.read][fs.read]来读取数据, 而[fs.read][fs.read]最终调用了
+`fs.readFile`使用[fs.read][fs.read]来读取数据, 而[fs.read][fs.read]最终调用了`binding.read`
 
 ```javascript
 binding.read(fd, buffer, offset, length, position, wrapper);
@@ -231,9 +231,9 @@ args.GetReturnValue().Set(req_wrap->persistent());
 UV_EXTERN int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file,void* buf, size_t length, int64_t offset, uv_fs_cb cb);
 ```
 
-它使用事件循环`loop`, 当文件读取操作完成后, 将会调用回调函数`cb`. 后面一节会描述libuv是如何实现完成事件调用函数的功能的.
+它使用事件循环`loop`, 当文件读取操作完成后, 将会调用回调函数`cb`. 接下来我们来看看 libuv是如何实现完成事件调用函数的功能的.
 
-#### 创建运行event loop
+### 创建运行event loop
 
 event loop对象在Node.js初始化过程中使用`uv_default_loop`创建,
 
@@ -290,9 +290,9 @@ inline uv_loop_t* Environment::IsolateData::event_loop() const {
 }
 ```
 
-在[node:Start][node:Start]中启用事件循环(见[Node.js初始化](#Node.js初始化))
+在[node:Start][node:Start]中启用事件循环(见[Node.js初始化](#node.js初始化)
 
-#### 深入libuv
+### 深入libuv
 理解libuv分两条线索, 任务的提交和任务的处理.
 
 **任务提交**
@@ -461,7 +461,7 @@ while there are still events to process:
         call the callback
 ```
 
-### 总结
+## 总结
 
 * C++能够通过v8提供的API获取并修改Javascript执行上下文
 * 暴露在Node.js环境中的很多模块最终实现都使用C++编写
@@ -469,7 +469,7 @@ while there are still events to process:
 ![thread model](/assets/node-thread-model.png)
 * libuv实现基于事件的异步IO
 
-### 相关参考
+## 相关参考
 
 * [node][node]
 * [libuv][libuv]
