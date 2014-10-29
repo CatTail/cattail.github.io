@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Javascript异步回调的思考及其解决方案
+title: Javascript callback
 date: 2013-06-18 16:36:36
 categories: tech
 ---
