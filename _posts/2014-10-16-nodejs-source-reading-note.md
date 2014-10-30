@@ -20,6 +20,7 @@ categories: tech
     * [创建并运行event loop](#创建运行event-loop)
     * [深入libuv](#深入libuv)
 * [总结](#总结)
+* [几个例子](#几个例子)
 * [相关参考](#相关参考)
 
 ## C++和Javascript交互
@@ -468,6 +469,107 @@ while there are still events to process:
 * 在Node.js中调用IO接口后, 会将任务提交到线程池中执行. Node.js程序员看到的是单线程的Javascript代码, 但是最终任务是多线程处理的.
 ![thread model](/assets/node-thread-model.png)
 * libuv实现基于事件的异步IO
+
+## 几个例子
+
+### 最大调用栈
+如果直接调用一下代码, 会造成调用栈过深
+
+```javascript
+function foo() {
+    foo();
+}
+foo();
+// Maximum call stack size exceeded
+```
+
+然而, 将递归调用放到异步回调中, 就避免了调用栈过深
+
+```javascript
+function foo() {
+    setTimeout(foo, 0);
+}
+foo();
+// all right. browser never block, code execute normally.
+```
+
+在异步会调用进行递归可以避免调用栈过深的原因是, 在递归函数执行前, 栈已经被清空.
+
+### 队列优先级
+在上面已经提到, 不同的异步操作队列是有优先级的, 通常timer会高于IO操作. 当然, 前提当event loop在检测时他们都处于完成状态.
+
+下面是一个文件读取操作, 多次试验, 输出的文件平均读取耗时为40mm
+
+```javascript
+var start = Date.now();
+
+fs.readFile("data.txt", function() {
+    console.log(Date.now() - start);
+});
+// 35, 38, 40, 37, 42
+```
+
+我们设定两个计时器, 一个比文件读取时间短(0), 另一个要长(100), 最后输出结果在注释中
+
+```javascript
+var fs = require('fs');
+
+var start = Date.now();
+
+setTimeout(function() {
+    console.log('First timer');
+}, 0);
+
+fs.readFile("data.txt", function() {
+    console.log('Async Operation', Date.now() - start);
+});
+
+setTimeout(function() {
+    console.log('Second timer');
+}, 100);
+
+// First timer 12
+// Async Operation 36
+// Second timer 108
+```
+
+这样的结果我们是能够理解的, 第一个计时器最快完成(0mm), 然后文件读取完成(37mm), 最后一个计时器最后完成.
+
+但是, 如果像下面代码, 我们使用循环阻塞整个进程, 直到所有任务都完成后, 在执行回调, 结果是怎样呢?
+
+```javascript
+var fs = require('fs');
+
+var start = Date.now();
+
+setTimeout(function() {
+    console.log('First timer', Date.now() - start);
+}, 0);
+
+fs.readFile("data.txt", function() {
+    console.log('Async Operation', Date.now() - start);
+});
+
+setTimeout(function() {
+    console.log('Second timer', Date.now() - start);
+}, 100);
+
+while(1) {
+    if ((Date.now() - start) > 200) {
+        break;
+    }
+}
+
+// First timer 212
+// Second timer 213
+// Async Operation 238
+```
+
+结果先执行两个计时器, 最后执行IO操作. 下面是一个类似的浏览器上的例子
+
+<iframe width="100%" height="300" src="http://jsfiddle.net/cattail/bkghxdfr/8/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
+
+上面提到, 执行Javascript代码的v8引擎和event loop在同一个主线程上, 这导致我们使用`while`循环执行Javascript代码时, 无法检测操作状态, 直到退出`while`循环, event loop看到都已经处于完成状态的操作, 按照队列优先级执行这些操作的回调.
 
 ## 相关参考
 
