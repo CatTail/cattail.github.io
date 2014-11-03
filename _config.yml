@@ -8,6 +8,22 @@ url: "http://cattail.me" # the base hostname & protocol for your site
 twitter_username: zhongchiyu
 github_username: cattail
 
+defaults:
+  -
+    scope:
+      path: _posts/default
+    values:
+      layout: default
+      lang: en
+      permalink: /:categories/:year/:month/:day/:title.html
+  -
+    scope:
+      path: _posts/zh
+    values:
+      layout: default
+      lang: zh
+      permalink: /:categories/:year/:month/:day/:title.html
+
     # Build settings
 markdown: redcarpet
 redcarpet:
