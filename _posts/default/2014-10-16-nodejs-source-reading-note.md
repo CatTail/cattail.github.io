@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Node.js源码初探
+title: Node.js源码阅读笔记
 date: 2014-10-16 17:56
 categories: tech
 ---
