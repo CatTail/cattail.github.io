@@ -67,8 +67,8 @@ version=2 app=app-name host=zhongchiyus-MacBook-Pro.local level=INFO timestamp=1
 * 实时日志以文件形式存储在机器上, 临时存储一天
 * 延时日志发送到[flume](https://flume.apache.org/), 持久存储
 
-GitHub[代码示例](https://github.com/CatTail/log-starter-kit)
 
 ## 参考
 
+* [GitHub代码示例](https://github.com/CatTail/log-starter-kit)
 * [bits technology 最佳日志实践](http://www.bitstech.net/2014/01/07/log-best-practice/)
