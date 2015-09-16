@@ -6,7 +6,7 @@ categories: tech
 ---
 本文介绍基于浏览器-服务器架构的日志处理.
 
-### `userID`
+### userID
 
 当用户第一次访问网站时, 将被赋予一个`userID`. 这个`userID`设置在cookie中, 该用户之后的所有访问都会带上该`userID`.
 
@@ -22,7 +22,7 @@ Set-Cookie: userid=ca4bac6fe62a45169723; path=/; expires=Fri, 08 Sep 2045 07:06:
 
 通过`userID`, 可以查询到特定用户的所有访问记录`accesslog`.
 
-### `requestID`
+### requestID
 
 除了记录访问记录外, 在处理每个用户请求过程中, 涉及业务逻辑处理和后端服务调用等, 对某些操作也需要记录相应日志和错误.
 
