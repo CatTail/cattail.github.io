@@ -1,6 +1,5 @@
 # Site settings
-title: clock
-email: zhongchiyu@gmail.com
+title: Clock
 description: > # this means to ignore newlines until "baseurl:"
     Programmer, for now.
 baseurl: "" # the subpath of your site, e.g. /blog/

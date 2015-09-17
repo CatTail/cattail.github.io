@@ -400,7 +400,7 @@ Node.js初始化过程中, [CreateEnvironment][node:CreateEnvironment]使用`uv_
 ```cpp
 uv_fs_read (env->event_loop(), &req_wrap->req_, fd , buf , len , pos , After);
 ```
-    
+
 `uv_fs_read`是这样定义的(deps/uv/src/unix/fs.c)
 
 ```cpp
