@@ -108,7 +108,7 @@ void setNonblocking(int fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-}     
+}
 
 int serial1, serial2;
 
@@ -249,7 +249,7 @@ struct timeval five_seconds = {5,0};
 struct event *ev1, *ev2;
 ev1 = event_new(base, fd1, EV_TIMEOUT|EV_READ|EV_PERSIST, cb_func,
     (char*)"Reading event");
-ev2 = event_new(base, fd2, EV_WRITE|EV_PERSIST, cb_func, 
+ev2 = event_new(base, fd2, EV_WRITE|EV_PERSIST, cb_func,
     (char*)"Writing event");
 
 event_add(ev1, &five_seconds);
@@ -353,12 +353,12 @@ while (any events are registered with the loop,
 libevent: chromium
 
 libev
-> A full-featured and high-performance (see benchmark) event loop that is loosely modelled after libevent, but without its limitations and bugs. 
+> A full-featured and high-performance (see benchmark) event loop that is loosely modelled after libevent, but without its limitations and bugs.
 
 libuv: Nodejs
 
 > In case any project watchers are wondering, libev served us well but:
-> It only supports level-triggered I/O. On Linux, we want to use edge-triggered mode - it cuts down the number of syscalls by a substantial margin. 
+> It only supports level-triggered I/O. On Linux, we want to use edge-triggered mode - it cuts down the number of syscalls by a substantial margin.
 > libev's inner loop does a lot of things we don't really need. Gutting the inner loop like we did in 649ad50 gave a 40% performance increase on some benchmarks.
 
 接口相似
@@ -373,7 +373,7 @@ UV_EXTERN int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file,
 ---
 ## 小结
 
-* 内核API: 
+* 内核API:
     * `read`
     * `select`
     * `poll`, `epoll`

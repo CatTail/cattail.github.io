@@ -335,7 +335,7 @@ dynamic.call(obj2); // 'obj2'
 var listener = function () {
   console.log(this);
 };
-// window object 
+// window object
 document.onclick = listener;
 // empty {} object
 document.onclick = function () {
