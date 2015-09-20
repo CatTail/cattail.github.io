@@ -11,6 +11,14 @@ permalink: /lab/
 
 Yet another git hooks manager, support project, user and global level hooks. Also support community hooks.
 
+## Catpreter
+
+* [Main page](http://cattail.me/catpreter/)
+* GitHub: [CatTail/catpreter](https://github.com/cattail/catpreter)
+* Documentation: http://cattail.me/catpreter/docs/readme.html
+
+Visualization of how compiler and compiler generator works.
+
 ## presenter
 
 * GitHub: [CatTail/presenter](https://github.com/CatTail/presenter)
