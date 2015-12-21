@@ -118,7 +118,7 @@ while(1) {
 
 结果先执行两个计时器, 最后执行IO操作. 下面是一个类似的浏览器上的例子
 
-<iframe width="100%" height="300" src="http://jsfiddle.net/cattail/bkghxdfr/8/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
+<iframe width="100%" height="300" src="https://jsfiddle.net/cattail/bkghxdfr/8/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
 
 为了理解这两个问题, 我们需要理解event loop背后的原理, 回答一些问题 --- 1) 多线程? 2) 多堆栈? 3) 多队列?
 
