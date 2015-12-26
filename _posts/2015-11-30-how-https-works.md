@@ -41,7 +41,7 @@ HTTPS和HTTP协议相比提供了
 1. [明文] 客户端发送随机数`client_random`和支持的加密方式列表
 2. [明文] 服务器返回随机数`server_random `，选择的加密方式和服务器证书链
 3. [RSA] 客户端验证服务器证书，使用证书中的公钥加密`premaster secret `发送给服务端
-4. [明文] 服务端使用私钥解密`premaster secret `
+4. 服务端使用私钥解密`premaster secret `
 5. 两端分别通过`client_random`，`server_random `和`premaster secret `生成`master secret`，用于对称加密后续通信内容
 
 ## 证书（Digital certificate）
