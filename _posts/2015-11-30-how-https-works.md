@@ -1,6 +1,8 @@
 ---
 layout: post
 title: HTTPS工作原理
+keywords: https,tls,ssl,证书,数字签名
+description: 介绍数字签名和证书, 解释TLS,SSL协议以及HTTPS工作原理和实现
 date: 2015-11-30 14:32
 category: tech
 ---
