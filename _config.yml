@@ -3,7 +3,7 @@ title: Clock
 description: > # this means to ignore newlines until "baseurl:"
     Programmer, for now.
 baseurl: "" # the subpath of your site, e.g. /blog/
-url: "http://cattail.me" # the base hostname & protocol for your site
+url: "https://cattail.me" # the base hostname & protocol for your site
 twitter_username: zhongchiyu
 github_username: cattail
 
