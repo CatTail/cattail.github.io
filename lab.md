@@ -13,9 +13,9 @@ Yet another git hooks manager, support project, user and global level hooks. Als
 
 ## Catpreter
 
-* [Main page](http://cattail.me/catpreter/)
+* [Main page](https://cattail.me/catpreter/)
 * GitHub: [CatTail/catpreter](https://github.com/cattail/catpreter)
-* Documentation: http://cattail.me/catpreter/docs/readme.html
+* Documentation: https://cattail.me/catpreter/docs/readme.html
 
 Visualization of how compiler and compiler generator works.
 
