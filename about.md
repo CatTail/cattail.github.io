@@ -22,3 +22,7 @@ permalink: /about/
 ## Hall of shame
 
 * Nodejs中文网 `http://www.nodejs.net/a/20141028/194119.html`
+
+## 友情链接
+
+* [My love](https://tengyue.me/)
