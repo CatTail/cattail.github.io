@@ -77,6 +77,11 @@ pre code {
     padding: .25em 0;
     color: #7a7a7a;
     font-style: italic;
+    .type {
+      color: #333;
+      font-style: normal;
+      margin-left: 10px;
+    }
   }
 
   .post-link {

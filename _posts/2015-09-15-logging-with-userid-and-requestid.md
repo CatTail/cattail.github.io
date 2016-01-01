@@ -1,6 +1,7 @@
 ---
 layout: post
 title: 基于userID和requestID的日志实践
+description: 介绍通过userID和requestID关联独立日志,以及在Nodejs应用中的日志实践
 date: 2015-09-15 18:21
 categories: tech
 ---
