@@ -3,57 +3,98 @@
 ---
 @charset "utf-8";
 
-
-
-// Our variables
-$base-font-family: Helvetica, Arial, sans-serif;
-$base-font-size:   16px;
-$small-font-size:  $base-font-size * 0.875;
-$base-line-height: 1.5;
-
-$spacing-unit:     30px;
-
-$text-color:       #111;
-$background-color: #fdfdfd;
-$brand-color:      #2a7ae2;
-
-$grey-color:       #828282;
-$grey-color-light: lighten($grey-color, 40%);
-$grey-color-dark:  darken($grey-color, 25%);
-
-$on-palm:          600px;
-$on-laptop:        800px;
-
-
-
-// Using media queries with like this:
-// @include media-query($palm) {
-//     .wrapper {
-//         padding-right: $spacing-unit / 2;
-//         padding-left: $spacing-unit / 2;
-//     }
-// }
-@mixin media-query($device) {
-    @media screen and (max-width: $device) {
-        @content;
-    }
-}
-
-
-
 // Import partials from `sass_dir` (defaults to `_sass`)
-@import
-        "base",
-        "layout",
-        "syntax-highlighting",
-        "gfm",
-        "yue"
-;
+@import "normalize";
+@import "syntax-highlighting";
+@import "gfm";
+@import "yue";
+@import "base";
 
-.site-header a {
-    text-decoration: none;
+html {
+  font-size: 20px;
 }
 
-.post .cc {
-    text-align: center;
+.site-header {
+  padding-top: 1.5rem;
+  padding-bottom: 1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  a {
+    text-decoration: none;
+  }
+
+  .site-title {
+    color: #333;
+    font-size: 1.25rem;
+  }
+  .site-nav {
+    float: right;
+  }
+  .site-nav a {
+    color: #666;
+  }
+  .site-nav a:hover {
+    color: #444;
+    border-bottom: 2px solid #444;
+  }
+  .site-nav a + a {
+    margin-left: 1em;
+  }
+}
+
+.wrapper {
+  margin: 0 auto;
+  max-width: 42rem;
+}
+
+.body {
+  padding: 1rem;
+
+  .post-list .post {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    margin-bottom: 0.75em;
+    border-bottom: thin solid #f3f3f3;
+    a {
+      text-decoration: none;
+    }
+  }
+  .post-list .post:last-child {
+    border-bottom: none;
+    margin-bottom: .375em;
+    padding-bottom: 0;
+  }
+
+  .post-meta {
+    margin: 0;
+    padding: .25em 0;
+    color: #7a7a7a;
+    font-style: italic;
+  }
+
+  .post-link {
+    margin-top: 0;
+    font-size: 2.998rem;
+    line-height: 1.25;
+    margin-bottom: .5em;
+  }
+  .post-link a {
+    color: #333;
+  }
+
+  .post-summary {
+    font-size: 1rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+}
+
+.site-footer {
+  background-color: #fafafa;
+  border-top: thin solid #f3f3f3;
+  color: #7a7a7a;
+  font-size: 0.75rem;
+  font-weight: 300;
+  padding: 2rem;
+  text-align: center;
 }

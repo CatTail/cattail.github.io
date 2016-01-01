@@ -19,7 +19,7 @@ Yet another git hooks manager, support project, user and global level hooks. Als
 
 Visualization of how compiler and compiler generator works.
 
-## presenter
+## Presenter
 
 * GitHub: [CatTail/presenter](https://github.com/CatTail/presenter)
 
