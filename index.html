@@ -7,7 +7,16 @@ layout: default
   <div class="post-list">
     {% for post in site.posts %}
     <div class="post">
-      <p class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</p>
+      <p class="post-meta">
+        {{ post.date | date: "%b %-d, %Y" }}
+        <span class="type">
+          {% if post.external_url %}
+            link
+          {% else %}
+            {{ post.layout }}
+          {% endif %}
+        </span>
+      </p>
 
       <h2 class="post-link">
         {% if post.external_url %}
