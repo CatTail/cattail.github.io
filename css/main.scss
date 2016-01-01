@@ -9,9 +9,14 @@
 @import "gfm";
 @import "yue";
 @import "base";
+@import "variables";
 
 html {
-  font-size: 20px;
+  font-size: 14px;
+}
+
+pre code {
+  word-wrap: normal !important;
 }
 
 .site-header {
@@ -19,16 +24,18 @@ html {
   padding-bottom: 1rem;
   padding-left: 1rem;
   padding-right: 1rem;
+  text-align: center;
   a {
     text-decoration: none;
   }
 
   .site-title {
     color: #333;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
   }
   .site-nav {
-    float: right;
+    margin-top: 0.25rem;
+    font-size: 1.25rem;
   }
   .site-nav a {
     color: #666;
@@ -74,7 +81,7 @@ html {
 
   .post-link {
     margin-top: 0;
-    font-size: 2.998rem;
+    font-size: 2rem;
     line-height: 1.25;
     margin-bottom: .5em;
   }
@@ -87,6 +94,17 @@ html {
     margin-top: 0;
     margin-bottom: 1rem;
   }
+
+  .post-header {
+    text-align: center;
+    margin-bottom: 1rem;
+    h1 {
+      margin: 0;
+    }
+  }
+  .post-meta.small {
+    font-size: 0.707rem;
+  }
 }
 
 .site-footer {
@@ -97,4 +115,54 @@ html {
   font-weight: 300;
   padding: 2rem;
   text-align: center;
+  a {
+    color: #7a7a7a;
+    text-decoration-color: #7a7a7a;
+  }
+}
+
+@media screen and (min-width: $viewport-small) {
+  html {
+    font-size: 16px;
+  }
+
+  .site-header {
+    text-align: left;
+    a {
+      font-size: 1rem;
+    }
+
+    .site-title {
+      font-size: 1.25rem;
+      float: left;
+    }
+
+    .site-nav {
+      float: right;
+      margin-top: 0;
+      margin-top: .25rem;
+    }
+  }
+
+  .body {
+    .post-header {
+      text-align: left;
+      h1 {
+        font-size: 2.998rem;
+        margin-top: 1em;
+      }
+    }
+  }
+}
+
+@media screen and (min-width: $viewport-medium) {
+  html {
+    font-size: 18px;
+  }
+}
+
+@media screen and (min-width: $viewport-large) {
+  html {
+    font-size: 20px;
+  }
 }

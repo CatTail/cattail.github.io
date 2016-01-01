@@ -1,3 +1,5 @@
+@import "variables";
+
 body,
 button {
   margin: 0;
@@ -20,19 +22,16 @@ svg {
 }
 
 body {
-  font-family: "Merriweather", "PT Serif", Georgia, "Times New Roman", serif;
+  font-family: $font-family;
 }
 body .yue {
-  font-family: "Merriweather", "PT Serif", Georgia, "Times New Roman", serif;
+  font-family: $font-family;
 }
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Lato", "Helvetica Neue", Helvetica, sans-serif;
+  font-family: $heading-font-family;
 }
-body .yue h1,
-body .yue h2,
-body .yue h3,
-body .yue h4,
-body .yue h5,
-body .yue h6 {
-  font-family: "Lato", "Helvetica Neue", Helvetica, sans-serif;
+body .yue {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: $heading-font-family;
+  }
 }
