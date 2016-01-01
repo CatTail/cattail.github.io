@@ -110,13 +110,6 @@ pre code {
   .post-meta.small {
     font-size: 0.707rem;
   }
-
-  .post-content {
-      // Safari iframe issues
-      // http://stackoverflow.com/questions/16937070/iframe-size-with-css-on-ios
-      overflow: auto;
-      -webkit-overflow-scrolling:touch;
-  }
 }
 
 .site-footer {
