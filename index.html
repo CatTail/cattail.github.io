@@ -4,22 +4,24 @@ layout: default
 
 <div class="home">
 
-  <h1 class="page-heading">Posts</h1>
-
-  <ul class="post-list">
+  <div class="post-list">
     {% for post in site.posts %}
-      <li>
-        <span class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</span>
+    <div class="post">
+      <p class="post-meta">{{ post.date | date: "%b %-d, %Y" }}</p>
 
-        <h2>
-            {% if post.external_url %}
-                <a class="post-link" onclick="_gaq.push(['_trackpageview', '{{ post.url }}']);" href="{{ post.external_url | prepend: site.baseurl }}">{{ post.title }}</a>
-            {% else %}
-                <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
-            {% endif %}
-        </h2>
-      </li>
+      <h2 class="post-link">
+        {% if post.external_url %}
+          <a onclick="_gaq.push(['_trackpageview', '{{ post.url }}']);" href="{{ post.external_url | prepend: site.baseurl }}">{{ post.title }}</a>
+        {% else %}
+          <a href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
+        {% endif %}
+      </h2>
+
+      {% if post.description %}
+        <p class="post-summary">{{ post.description }}</p>
+      {% endif %}
+    </div>
     {% endfor %}
-  </ul>
+  </div>
 
 </div>

@@ -112,8 +112,8 @@ HTTPS和HTTP协议相比提供了
 +---------------------+                 |
                                         |
                                         |
-          +--------+               +---------+ 
-          | 数字签名 |---公钥解密--->|  消息摘要 | 
+          +--------+               +---------+
+          | 数字签名 |---公钥解密--->|  消息摘要 |
           +--------+               +---------+
 
 ```
@@ -200,10 +200,10 @@ no
 
 > There are a number of ways in which a man-in-the-middle
    attacker can attempt to make two entities drop down to the least
-   secure method they support. 
-   
+   secure method they support.
+
 攻击者甚至可以直接丢弃双方的数据包
-   
+
 ### 服务端如何验证客户端身份？
 
 通过Client Certificate
@@ -236,7 +236,7 @@ Error Alerts：错误处理
 ### 加密，压缩和MAC算法参数是如何计算的
 
 Handshaking Protocols使得客户端和服务端交换了三个参数：`client_random`，`server_random `和master_secret，通过以下算法生成算法所需要的参数
-   
+
 ```
 To generate the key material, compute
 

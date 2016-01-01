@@ -3,13 +3,15 @@
 
   {% include head.html %}
 
-  <body class="yue">
+  <body>
 
-    {% include header.html %}
+    <div class="site-wrap">
+      {% include header.html %}
 
-    <div class="page-content">
-      <div class="wrapper">
-        {{ content }}
+      <div class="body">
+        <div class="wrapper">
+          {{ content }}
+        </div>
       </div>
     </div>
 
