@@ -13,7 +13,7 @@ Yet another git hooks manager, support project, user and global level hooks. Als
 
 ## Catpreter
 
-* [Main page](https://cattail.me/catpreter/)
+* [Main page](http://cattail.github.io/catpreter)
 * GitHub: [CatTail/catpreter](https://github.com/cattail/catpreter)
 * Documentation: https://cattail.me/catpreter/docs/readme.html
 
