@@ -275,5 +275,6 @@ partitioned as follows:
 ## 参考链接
 
 1. TLS1.2规范：[The Transport Layer Security (TLS) Protocol Version 1.2](https://tools.ietf.org/html/rfc5246)
-2. 证书和数字签名：[What is a Digital Signature?](http://www.youdzone.com/signature.html)
-3. TLS Handshake：[Keyless SSL: The Nitty Gritty Technical Details](https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/)
+2. PKI规范：[Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile](http://tools.ietf.org/html/rfc5280)
+3. 证书和数字签名：[What is a Digital Signature?](http://www.youdzone.com/signature.html)
+4. TLS Handshake：[Keyless SSL: The Nitty Gritty Technical Details](https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/)
