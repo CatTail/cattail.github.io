@@ -5,8 +5,6 @@
 
 // Import partials from `sass_dir` (defaults to `_sass`)
 @import "normalize";
-@import "syntax-highlighting";
-@import "gfm";
 @import "yue";
 @import "base";
 @import "variables";
@@ -109,6 +107,10 @@ pre code {
   }
   .post-meta.small {
     font-size: 0.707rem;
+  }
+
+  li {
+      word-wrap: break-word;
   }
 }
 

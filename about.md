@@ -30,4 +30,4 @@ permalink: /about/
 
 ## 友情链接
 
-[My love](https://tengyue.me/)
+* [My love](https://tengyue.me/)
