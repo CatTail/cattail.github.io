@@ -1,0 +1,1604 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>猫尾博客</title>
+    <description>Programmer, for now.
+</description>
+    <link>https://cattail.me/</link>
+    <atom:link href="https://cattail.me/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Tue, 02 Feb 2016 21:10:14 +0800</pubDate>
+    <lastBuildDate>Tue, 02 Feb 2016 21:10:14 +0800</lastBuildDate>
+    <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>浅谈基准测试</title>
+        <description>&lt;p&gt;在一个应用中，应前端要求需要过滤后端接口响应JSON数据中的&lt;code&gt;null&lt;/code&gt;字段，过滤操作会有性能影响，那么如何决定是否增加这个功能呢？&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;首先需要确定衡量指标&lt;/strong&gt;。通常时间（time）和空间（memory）是两个衡量程序性能状况额指标，在这个例子中空间并不是制约因素，因而只考虑时间指标。&lt;/p&gt;
+
+&lt;h2 id=&quot;section&quot;&gt;实现&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;接着我们需要一个程序实现&lt;/strong&gt;。这个实现简单的递归过滤&lt;code&gt;Object&lt;/code&gt;中值为&lt;code&gt;null&lt;/code&gt;的字段，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-js&quot;&gt;/**
+ * 不过滤数组元素为null的情况，如
+ * `[null, &#39;foo&#39;, null]`过滤后仍然为`[null, &#39;foo&#39;, null]`
+ */
+function prune(data) {
+    if (_.isArray(data)) {
+        _.each(data, prune)
+    } else if (_.isObject(data)) {
+        _.each(data, function(value, key) {
+            if (_.isObject(value)) {
+                prune(value)
+            } else if (value === null) {
+                delete data[key]
+            }
+        })
+    }
+    return data
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;单元测试见附录。&lt;/p&gt;
+
+&lt;h2 id=&quot;section-1&quot;&gt;影响因素&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;然后根据程序实现判断性能的影响因素&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;什么因素会影响时间指标呢？JSON数据的大小（size）？JSON数据的字段数？JSON数据的层次结构？&lt;/p&gt;
+
+&lt;p&gt;时间指标受JSON数据的字段（包括递归字段）影响，因为在&lt;code&gt;prune&lt;/code&gt;的实现中，遍历&lt;code&gt;Object&lt;/code&gt;和&lt;code&gt;Array&lt;/code&gt;的时间决定了程序执行时间。&lt;/p&gt;
+
+&lt;h2 id=&quot;benchmark&quot;&gt;benchmark&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;最后根据影响因素选择测试数据，进行基准测试并得出结论&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;借助&lt;a href=&quot;https://github.com/bestiejs/benchmark.js&quot;&gt;benchmark.js&lt;/a&gt;，以&lt;code&gt;noop&lt;/code&gt;为参照组进行基准测试&lt;/p&gt;
+
+&lt;p&gt;有两组测试数据，真实线上接口获取的&lt;code&gt;realSamples&lt;/code&gt;和随机生成的模拟数据&lt;code&gt;fakeSamples&lt;/code&gt;。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-js&quot;&gt;var fs = require(&#39;fs&#39;)
+var Benchmark = require(&#39;benchmark&#39;)
+var suite = new Benchmark.Suite()
+var getSample = require(&#39;./sample&#39;).getSample
+var getSampleSize = require(&#39;./sample&#39;).getSampleSize
+var prune = require(&#39;../src/utility&#39;).prune
+var noop = function(){}
+
+var filenames = fs.readdirSync(__dirname + &#39;/samples&#39;)
+var realSamples = filenames
+    .map(function(filename) {
+        return JSON.parse(
+            fs.readFileSync(__dirname + `/samples/${filename}`, &#39;utf8&#39;)
+        )
+    })
+var realSizes = realSamples.map(getSampleSize)
+
+var fakeSizes = [10, 100, 1000, 10000]
+var fakeSamples = fakeSizes.map(function(size) {
+    return getSample(size)
+})
+
+// add tests
+realSamples.forEach(function(sample, index) {
+    var filename = filenames[index]
+    suite
+        .add(`prune#real:${filename}:${getSampleSize(sample)}`, function() {
+            prune(sample)
+        })
+})
+
+fakeSamples.forEach(function(sample, index) {
+    var size = fakeSizes[index]
+    suite
+        .add(`prune#fake:${size}:${getSampleSize(sample)}`, function() {
+            prune(sample)
+        })
+})
+suite
+    .add(&#39;noop&#39;, function() {
+        noop(realSamples[0])
+    })
+// add listeners
+suite
+    .on(&#39;cycle&#39;, function(event) {
+        console.log(String(event.target))
+    })
+    .on(&#39;complete&#39;, function() {
+        var totalSize = realSizes.reduce(function(sum, size) {
+            return sum + size
+        }, 0)
+        var averageSize = Math.floor(totalSize / realSizes.length)
+        console.log(`real samples total size ${totalSize}, average size ${averageSize}`)
+        console.log(&#39;Fastest is &#39; + this.filter(&#39;fastest&#39;).map(&#39;name&#39;))
+    })
+// run
+.run()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里还实现了&lt;code&gt;getSampleSize&lt;/code&gt;方法（见附录），用于统计JSON数据的字段总量。以此来粗略估计线上真实接口返回数据的平均字段数量。&lt;/p&gt;
+
+&lt;p&gt;运行结果&lt;sup&gt;[1]&lt;/sup&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;prune#real:adverts.json:47 x 179,918 ops/sec ±2.10% (79 runs sampled)
+prune#real:areas.json:5126 x 1,333 ops/sec ±2.47% (74 runs sampled)
+prune#real:citys.json:6417 x 1,363 ops/sec ±1.07% (90 runs sampled)
+prune#real:count.json:1037 x 6,043 ops/sec ±1.75% (89 runs sampled)
+prune#real:menus.json:55 x 47,010 ops/sec ±1.34% (86 runs sampled)
+prune#real:pois.json:3136 x 2,316 ops/sec ±3.16% (84 runs sampled)
+prune#real:subway.json:1999 x 3,043 ops/sec ±1.85% (89 runs sampled)
+prune#fake:10:10 x 286,702 ops/sec ±1.64% (88 runs sampled)
+prune#fake:100:100 x 63,893 ops/sec ±1.56% (89 runs sampled)
+prune#fake:1000:985 x 8,173 ops/sec ±1.63% (86 runs sampled)
+prune#fake:10000:9995 x 997 ops/sec ±1.80% (87 runs sampled)
+noop x 80,713,438 ops/sec ±1.85% (87 runs sampled)
+real samples total size 17817, average size 2545
+Fastest is noop
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;结论&lt;/strong&gt;：平均字段总量为&lt;code&gt;2545&lt;/code&gt;，向上取证以&lt;code&gt;10000&lt;/code&gt;量级计算，使用&lt;code&gt;prune&lt;/code&gt;处理数据大约需要1ms，并不影响整个应用的性能。&lt;/p&gt;
+
+&lt;h2 id=&quot;section-2&quot;&gt;小结&lt;/h2&gt;
+
+&lt;p&gt;上面已经用黑体标记了重点，这里再做一次小结&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;确定衡量指标&lt;/li&gt;
+  &lt;li&gt;实现程序&lt;/li&gt;
+  &lt;li&gt;判断影响因素&lt;/li&gt;
+  &lt;li&gt;选择测试数据，进行基准测试&lt;/li&gt;
+  &lt;li&gt;得出结论&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;section-3&quot;&gt;附录&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;看起来&lt;code&gt;getSampleSize&lt;/code&gt;或&lt;code&gt;getSample&lt;/code&gt;函数计算有偏差，不过在这里可以忽略这个问题。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;sample&quot;&gt;sample生成器&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-js&quot;&gt;var Chance = require(&#39;chance&#39;)
+var _ = require(&#39;lodash&#39;)
+
+var DATA_TYPES = [
+    &#39;bool&#39;,
+    &#39;character&#39;,
+    &#39;floating&#39;,
+    &#39;integer&#39;,
+    &#39;natural&#39;,
+    &#39;string&#39;,
+
+    &#39;Array&#39;,
+    &#39;Object&#39;,
+]
+
+function getSample(size, sample, chance) {
+    chance = chance || new Chance()
+    sample = sample || {}
+    var index, cursor, pick, type, key, value
+    for (index=0, cursor=0; index&amp;lt;size; index++, cursor++) {
+        pick = chance.integer({min: index, max: size-1})
+        switch(type = chance.pick(DATA_TYPES)) {
+            case &#39;Array&#39;:
+                value = getSample(pick - index, [], chance)
+                index = pick
+                break
+            case &#39;Object&#39;:
+                value = getSample(pick - index, {}, chance)
+                index = pick
+                break
+            default:
+                value = chance[type]()
+        }
+        key = sample.constructor.name === &#39;Array&#39; ? cursor : chance.word()
+        sample[key] = value
+    }
+    return sample
+}
+
+function getSampleSize(sample) {
+    return _.reduce(sample, function(sum, value, key) {
+        if (_.isArray(value)) {
+            sum += getSampleSize(value)
+        } else if (_.isObject(value)) {
+            sum += getSampleSize(value)
+        }
+        return sum + 1
+    }, 0)
+}
+
+module.exports = {
+    getSample: getSample,
+    getSampleSize: getSampleSize,
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;section-4&quot;&gt;单元测试&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-js&quot;&gt;describe(&#39;utility&#39;, () =&amp;gt; {
+    describe(&#39;prune&#39;, () =&amp;gt; {
+        it(&#39;do not touch primitive type&#39;, () =&amp;gt; {
+            expect(prune(123)).to.deep.equal(123)
+            expect(prune(&#39;123&#39;)).to.deep.equal(&#39;123&#39;)
+            expect(prune(null)).to.deep.equal(null)
+            expect(prune([1, 2, &#39;3&#39;])).to.deep.equal([1, 2, &#39;3&#39;])
+            expect(prune({foo: &#39;bar&#39;})).to.deep.equal({foo: &#39;bar&#39;})
+        })
+
+        it(&#39;prune null value in object&#39;, () =&amp;gt; {
+            expect(prune({foo: &#39;bar&#39;, baz: null})).to.deep.equal({foo: &#39;bar&#39;})
+        })
+
+        it(&#39;do not prune null in array&#39;, () =&amp;gt; {
+            expect(
+                prune([null, &#39;foo&#39;, null, &#39;bar&#39;, null])
+            ).to.deep.equal([null, &#39;foo&#39;, null, &#39;bar&#39;, null])
+        })
+
+        it(&#39;complex json prune&#39;, () =&amp;gt; {
+            expect(
+                prune([
+                    null,
+                    {
+                        &#39;foo1&#39;: &#39;bar1&#39;,
+                        &#39;foo2&#39;: {
+                            &#39;foo3&#39;: [&#39;bar3&#39;, null],
+                            &#39;foo&#39;: null,
+                        },
+                        &#39;foo&#39;: null
+                    },
+                    null
+                ])
+            ).to.deep.equal([
+                null,
+                {
+                    &#39;foo1&#39;: &#39;bar1&#39;,
+                    &#39;foo2&#39;: {
+                        &#39;foo3&#39;: [&#39;bar3&#39;, null],
+                    },
+                },
+                null
+            ])
+        })
+    })
+})
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+        <pubDate>Tue, 12 Jan 2016 14:00:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2016/01/12/how-to-benchmark.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2016/01/12/how-to-benchmark.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+      <item>
+        <title>如何为开源Nodejs库patch代码</title>
+        <description>&lt;p&gt;以开源项目&lt;a href=&quot;https://github.com/graphql/graphql-js&quot;&gt;graphql-js&lt;/a&gt;举例，原项目不支持在语法树（AST）中获取父节点，&lt;/p&gt;
+
+&lt;p&gt;对其改动有两种做法&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;fork并维护独立分支：优点是自由度大，初期项目需求可以迅速实现；缺点是后期维护成本高&lt;/li&gt;
+  &lt;li&gt;patch代码以满足当前需求：优点是后期维护成本低，可以由社区支持项目不断改善；缺点项目进度被上游merge代码的速度阻碍&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;本文提供方案来解决patch代码时因为被上游阻碍影响项目开发进度的问题。&lt;/p&gt;
+
+&lt;h3 id=&quot;patch&quot;&gt;patch&lt;/h3&gt;
+
+&lt;p&gt;修改代码并&lt;a href=&quot;https://github.com/graphql/graphql-js/pull/273&quot;&gt;提交PR&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;发布&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;不应该修改内网npm镜像中的同名包，而应该在scope域下发patch包&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;修改&lt;code&gt;package.json&lt;/code&gt;，增加scope并发布&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-json&quot;&gt;{
+  &quot;name&quot;: &quot;@scope/graphql&quot;,
+  ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;热替换&lt;/h3&gt;
+
+&lt;p&gt;业务项目中的依赖包本身可能就会依赖需要被patch的包，例如项目同时依赖了&lt;a href=&quot;https://github.com/graphql/graphql-js&quot;&gt;&lt;code&gt;graphql-js&lt;/code&gt;&lt;/a&gt;和&lt;a href=&quot;https://github.com/graphql/express-graphql/&quot;&gt;&lt;code&gt;express-graphql&lt;/code&gt;&lt;/a&gt;，而&lt;code&gt;express-graphql&lt;/code&gt;又依赖了&lt;code&gt;graphql-js&lt;/code&gt;。我们除了需要直接在项目中使用&lt;code&gt;@scope/graphql&lt;/code&gt;，还需要为所有依赖包做相同的改动，通过热替换可以解决这个问题。&lt;/p&gt;
+
+&lt;p&gt;在业务项目中增加patch包依赖&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-json&quot;&gt;{
+  ...
+  &quot;dependencies&quot;: {
+    &quot;@scope/graphql&quot;: &quot;^0.4.14&quot;,
+    ...
+  }
+  ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在项目入口热替换需要patch的包&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-js&quot;&gt;// package alias
+// patch https://github.com/graphql/graphql-js/pull/273
+require(&#39;@scope/graphql&#39;) // prime cache
+require.cache[require.resolve(&#39;graphql&#39;)] = require.cache[require.resolve(&#39;@scope/graphql&#39;)]
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+        <pubDate>Mon, 11 Jan 2016 16:55:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2016/01/11/how-to-patch-nodejs-module.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2016/01/11/how-to-patch-nodejs-module.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+      <item>
+        <title>HTTPS工作原理</title>
+        <description>&lt;p&gt;目标读者：理解HTTP协议，对称和非对称加密，想要了解HTTPS协议的工作原理&lt;/p&gt;
+
+&lt;p&gt;读完本文，你能明白&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;什么是HTTPS，TLS(SSL)，TLS和HTTPS是什么关系&lt;/li&gt;
+  &lt;li&gt;什么是证书和数字签名，它们是如何传递信任的&lt;/li&gt;
+  &lt;li&gt;HTTPS有什么样的功能，它是如何实现这样的功能的&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;简介&lt;/h3&gt;
+
+&lt;p&gt;HTTPS，也称作HTTP over TLS。&lt;a href=&quot;https://en.wikipedia.org/wiki/Transport_Layer_Security&quot;&gt;TLS的前身是SSL&lt;/a&gt;，TLS 1.0通常被标示为SSL 3.1，TLS 1.1为SSL 3.2，TLS 1.2为SSL 3.3。本文着重描述TLS协议的1.2版本&lt;/p&gt;
+
+&lt;p&gt;下图描述了在TCP/IP协议栈中TLS(各子协议）和HTTP的关系&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/tcp-ip-model.png&quot; alt=&quot;tcp ip model&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Credit: &lt;a href=&quot;http://blogs.msdn.com/213737/ProfileUrlRedirect.ashx&quot;&gt;Kaushal Kumar Panday&lt;/a&gt; From: &lt;a href=&quot;http://blogs.msdn.com/b/kaushal/archive/2013/08/03/ssl-handshake-and-https-bindings-on-iis.aspx&quot;&gt;SSL Handshake and HTTPS Bindings on IIS&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;其中Handshake protocol，Change Ciper Spec protocol和Alert protocol组成了SSL Handshaking Protocols。&lt;/p&gt;
+
+&lt;p&gt;HTTPS和HTTP协议相比提供了&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;数据完整性：内容传输经过完整性校验&lt;/li&gt;
+  &lt;li&gt;数据隐私性：内容经过对称加密，每个连接生成一个唯一的加密密钥&lt;/li&gt;
+  &lt;li&gt;身份认证：第三方无法伪造服务端（客户端）身份&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;其中，数据完整性和隐私性由TLS Record Protocol保证，身份认证由TLS Handshaking Protocols实现。&lt;/p&gt;
+
+&lt;h2 id=&quot;section-1&quot;&gt;总览&lt;/h2&gt;
+
+&lt;p&gt;使用RSA算法的SSL握手过程是这样的&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/ssl_handshake_rsa.jpg&quot; alt=&quot;rsa handshake&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Source: &lt;a href=&quot;https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/&quot;&gt;Keyless SSL: The Nitty Gritty Technical Details&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;[明文] 客户端发送随机数&lt;code&gt;client_random&lt;/code&gt;和支持的加密方式列表&lt;/li&gt;
+  &lt;li&gt;[明文] 服务器返回随机数&lt;code&gt;server_random &lt;/code&gt;，选择的加密方式和服务器证书链&lt;/li&gt;
+  &lt;li&gt;[RSA] 客户端验证服务器证书，使用证书中的公钥加密&lt;code&gt;premaster secret &lt;/code&gt;发送给服务端&lt;/li&gt;
+  &lt;li&gt;服务端使用私钥解密&lt;code&gt;premaster secret &lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;两端分别通过&lt;code&gt;client_random&lt;/code&gt;，&lt;code&gt;server_random &lt;/code&gt;和&lt;code&gt;premaster secret &lt;/code&gt;生成&lt;code&gt;master secret&lt;/code&gt;，用于对称加密后续通信内容&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;digital-certificate&quot;&gt;证书（Digital certificate）&lt;/h2&gt;
+
+&lt;p&gt;那么什么是证书呢？&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/certificate.png&quot; alt=&quot;certificate&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;证书中包含什么信息&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;证书信息：过期时间和序列号&lt;/li&gt;
+  &lt;li&gt;所有者信息：姓名等&lt;/li&gt;
+  &lt;li&gt;所有者公钥&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;为什么服务端要发送证书给客户端&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;互联网有太多的服务需要使用证书来验证身份，以至于客户端（操作系统或浏览器等）无法内置所有证书，需要通过服务端将证书发送给客户端。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;客户端为什么要验证接收到的证书&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;中间人攻击&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;客户端&amp;lt;------------攻击者&amp;lt;------------服务端
+        伪造证书            拦截请求
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;客户端如何验证接收到的证书&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;为了回答这个问题，需要引入数字签名(Digital Signature)。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;+---------------------+
+| A digital signature |
+|(not to be confused  |
+|with a digital       |
+|certificate)         |            +---------+              +--------+
+| is a mathematical   |----哈希---&amp;gt;| 消息摘要  |---私钥加密---&amp;gt;| 数字签名 |
+|technique used       |            +---------+              +--------+
+|to validate the      |
+|authenticity and     |
+|integrity of a       |
+|message, software    |
+|or digital document. |
++---------------------+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;将一段文本通过哈希（hash）和私钥加密处理后生成数字签名。&lt;/p&gt;
+
+&lt;p&gt;假设消息传递在Bob，Susan和Pat三人之间发生。Susan将消息连同数字签名一起发送给Bob，Bob接收到消息后，可以这样验证接收到的消息就是Susan发送的&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;+---------------------+
+| A digital signature |
+|(not to be confused  |
+|with a digital       |
+|certificate)         |            +---------+
+| is a mathematical   |----哈希---&amp;gt;|  消息摘要 |
+|technique used       |            +---------+
+|to validate the      |                 |
+|authenticity and     |                 |
+|integrity of a       |                 |
+|message, software    |                 对
+|or digital document. |                 比
++---------------------+                 |
+                                        |
+                                        |
+          +--------+               +---------+
+          | 数字签名 |---公钥解密---&amp;gt;|  消息摘要 |
+          +--------+               +---------+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;当然，这个前提是Bob知道Susan的公钥。更重要的是，和消息本身一样，公钥不能在不安全的网络中直接发送给Bob。&lt;/p&gt;
+
+&lt;p&gt;此时就引入了&lt;a href=&quot;https://en.wikipedia.org/wiki/Certificate_authority&quot;&gt;证书颁发机构&lt;/a&gt;（Certificate Authority，简称CA），CA数量并不多，Bob客户端内置了所有受信任CA的证书。CA对Susan的公钥（和其他信息）数字签名后生成证书。&lt;/p&gt;
+
+&lt;p&gt;Susan将证书发送给Bob后，Bob通过CA证书的公钥验证证书签名。&lt;/p&gt;
+
+&lt;p&gt;Bob信任CA，CA信任Susan 使得 Bob信任Susan，&lt;a href=&quot;https://en.wikipedia.org/wiki/Chain_of_trust&quot;&gt;信任链&lt;/a&gt;（Chain Of Trust）就是这样形成的。&lt;/p&gt;
+
+&lt;p&gt;事实上，Bob客户端内置的是CA的根证书(Root Certificate)，HTTPS协议中服务器会发送证书链（Certificate Chain）给客户端。&lt;/p&gt;
+
+&lt;h2 id=&quot;tlshttpstoolsietforghtmlrfc5246&quot;&gt;&lt;a href=&quot;https://tools.ietf.org/html/rfc5246&quot;&gt;TLS协议&lt;/a&gt;&lt;/h2&gt;
+
+&lt;p&gt;TLS协议包括TLS Record Protocol和TLS Handshake Protocol。总览中的流程图仅涉及到TLS Handshake Protocol。&lt;/p&gt;
+
+&lt;h3 id=&quot;tls-record-protocol&quot;&gt;TLS Record Protocol&lt;/h3&gt;
+
+&lt;p&gt;在TLS协议中，有四种子协议运行于Record protocol之上&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Handshake protocol&lt;/li&gt;
+  &lt;li&gt;Alert protocol&lt;/li&gt;
+  &lt;li&gt;Change cipher spec protocol&lt;/li&gt;
+  &lt;li&gt;Application data protocol&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Record protocol起到了这样的作用&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;在发送端：将数据（Record）分段，压缩，增加&lt;a href=&quot;https://en.wikipedia.org/wiki/Message_authentication_code&quot;&gt;MAC&lt;/a&gt;(Message Authentication Code)和加密&lt;/li&gt;
+  &lt;li&gt;在接收端：将数据（Record）解密，验证MAC，解压并重组&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;值得一提的是，Record protocol提供了数据完整性和隐私性保证，但Record类型（type）和长度（length）是公开传输的&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Record Protocol有三个连接状态(Connection State)，连接状态定义了压缩，加密和MAC算法。所有的Record都是被当前状态（Current State）确定的算法处理的。&lt;/p&gt;
+
+&lt;p&gt;TLS Handshake Protocol和Change Ciper Spec Protocol会导致Record Protocol状态切换。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;empty state -------------------&amp;gt; pending state ------------------&amp;gt; current state
+             Handshake Protocol                Change Cipher Spec
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;初始当前状态（Current State）没有指定加密，压缩和MAC算法，因而在完成TLS Handshaking Protocols一系列动作之前，客户端和服务端的数据都是&lt;strong&gt;明文传输&lt;/strong&gt;的；当TLS完成握手过程后，客户端和服务端确定了加密，压缩和MAC算法及其参数，数据（Record）会通过指定算法处理。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;其中，Record首先被加密，然后添加MAC（message authentication code）以保证数据完整性。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;tls-handshaking-protocols&quot;&gt;TLS Handshaking Protocols&lt;/h3&gt;
+
+&lt;p&gt;Handshakeing protocols包括Alert Protocol，Change Ciper Spec Protocol和Handshake protocol。本文不会详细介绍Alert Protocol和Change Ciper Spec Protocol。&lt;/p&gt;
+
+&lt;p&gt;使用RSA算法的握手过程是这样的（已在总览中提到）&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/ssl_handshake_rsa.jpg&quot; alt=&quot;rsa handshake&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Source: &lt;a href=&quot;https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/&quot;&gt;Keyless SSL: The Nitty Gritty Technical Details&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;客户端和服务端在握手hello消息中明文交换了&lt;code&gt;client_random&lt;/code&gt;和&lt;code&gt;server_random &lt;/code&gt;，使用RSA公钥加密传输&lt;code&gt;premaster secret &lt;/code&gt;，最后通过&lt;a href=&quot;#master-secret是如何计算的&quot;&gt;算法&lt;/a&gt;，客户端和服务端分别计算&lt;code&gt;master secret&lt;/code&gt;。其中，不直接使用&lt;code&gt;premaster secret &lt;/code&gt;的原因是：保证secret的随机性不受任意一方的影响。&lt;/p&gt;
+
+&lt;p&gt;除了使用RSA算法在公共信道交换密钥，还可以通过Diffie–Hellman算法。Diffie–Hellman算法的原理是这样的&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/Diffie-Hellman_Key_Exchange.svg&quot; alt=&quot;Diffie-Hellman_Key_Exchange&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;By Original schema: A.J. Han Vinck, University of Duisburg-Essen SVG version: Flugaal [Public domain], via Wikimedia Commons&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;使用Diffie–Hellman算法交换&lt;code&gt;premaster secret &lt;/code&gt;的流程&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/ssl_handshake_diffie_hellman.jpg&quot; alt=&quot;diffie hellman handshake&quot; /&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Source: &lt;a href=&quot;https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/&quot;&gt;Keyless SSL: The Nitty Gritty Technical Details&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;小结&lt;/h3&gt;
+
+&lt;p&gt;TLS Handshaking Protocols协商了TLS Record Protocol使用的算法和所需参数，并验证了服务端身份；TLS Record Protocol在协商后保证应用层数据的完整性和隐私性。&lt;/p&gt;
+
+&lt;p&gt;TLS Handshaking Protocol的核心是在公开信道上传递&lt;code&gt;premaster secret&lt;/code&gt;。&lt;/p&gt;
+
+&lt;h2 id=&quot;qa&quot;&gt;Q&amp;amp;A&lt;/h2&gt;
+
+&lt;h3 id=&quot;section-3&quot;&gt;为什么传输内容不直接使用非对称加密？&lt;/h3&gt;
+
+&lt;p&gt;性能&lt;/p&gt;
+
+&lt;h3 id=&quot;https&quot;&gt;HTTPS能保证正常连接？&lt;/h3&gt;
+
+&lt;p&gt;no&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;There are a number of ways in which a man-in-the-middle&lt;br /&gt;
+   attacker can attempt to make two entities drop down to the least&lt;br /&gt;
+   secure method they support.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;攻击者甚至可以直接丢弃双方的数据包&lt;/p&gt;
+
+&lt;h3 id=&quot;section-4&quot;&gt;服务端如何验证客户端身份？&lt;/h3&gt;
+
+&lt;p&gt;通过Client Certificate&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;This message conveys the client’s certificate chain to the server;&lt;br /&gt;
+      the server will use it when verifying the CertificateVerify&lt;br /&gt;
+      message (when the client authentication is based on signing) or&lt;br /&gt;
+      calculating the &lt;code&gt;premaster secret &lt;/code&gt; (for non-ephemeral Diffie-&lt;br /&gt;
+      Hellman).  The certificate MUST be appropriate for the negotiated&lt;br /&gt;
+      cipher suite’s key exchange algorithm, and any negotiated&lt;br /&gt;
+      extensions.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;alert-protocol&quot;&gt;Alert protocol有什么作用？&lt;/h3&gt;
+
+&lt;p&gt;Closure Alerts：防止Truncation Attack&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In a truncation attack, an attacker inserts into a message a TCP code indicating the message has finished, thus preventing the recipient picking up the rest of the message.&lt;br /&gt;
+To prevent this, SSL from version v3 onward has a closing handshake, so the recipient knows the message has not ended until this has been performed.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Error Alerts：错误处理&lt;/p&gt;
+
+&lt;h3 id=&quot;master-secret&quot;&gt;master secret是如何计算的&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;  master_secret = PRF(pre_master_secret, &quot;master secret&quot;,
+                      ClientHello.random + ServerHello.random)
+                      [0..47];
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;mac&quot;&gt;加密，压缩和MAC算法参数是如何计算的&lt;/h3&gt;
+
+&lt;p&gt;Handshaking Protocols使得客户端和服务端交换了三个参数：&lt;code&gt;client_random&lt;/code&gt;，&lt;code&gt;server_random &lt;/code&gt;和master_secret，通过以下算法生成算法所需要的参数&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;To generate the key material, compute
+
+  key_block = PRF(SecurityParameters.master_secret,
+                  &quot;key expansion&quot;,
+                  SecurityParameters.`server_random ` +
+                  SecurityParameters.`client_random`);
+
+until enough output has been generated.  Then, the key_block is
+partitioned as follows:
+
+  client_write_MAC_key[SecurityParameters.mac_key_length]
+  server_write_MAC_key[SecurityParameters.mac_key_length]
+  client_write_key[SecurityParameters.enc_key_length]
+  server_write_key[SecurityParameters.enc_key_length]
+  client_write_IV[SecurityParameters.fixed_iv_length]
+  server_write_IV[SecurityParameters.fixed_iv_length]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The master secret is expanded into a sequence of secure bytes, which&lt;br /&gt;
+   is then split to a client write MAC key, a server write MAC key, a&lt;br /&gt;
+   client write encryption key, and a server write encryption key&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;diffie-hellmantls&quot;&gt;使用Diffie-Hellman算法的TLS握手细节&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/how-https-works/dh-detail.jpg&quot; alt=&quot;dh-detail&quot; /&gt;&lt;br /&gt;
+&amp;gt; Source: https://cipherstuff.wordpress.com/&lt;/p&gt;
+
+&lt;h2 id=&quot;section-5&quot;&gt;拓展阅读&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/&quot;&gt;Keyless&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://letsencrypt.org/&quot;&gt;Let’s Encrypt&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;Session resume&lt;/li&gt;
+  &lt;li&gt;证书Revoke&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;section-6&quot;&gt;参考链接&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;TLS1.2规范：&lt;a href=&quot;https://tools.ietf.org/html/rfc5246&quot;&gt;The Transport Layer Security (TLS) Protocol Version 1.2&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;PKI规范：&lt;a href=&quot;http://tools.ietf.org/html/rfc5280&quot;&gt;Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;证书和数字签名：&lt;a href=&quot;http://www.youdzone.com/signature.html&quot;&gt;What is a Digital Signature?&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;TLS Handshake：&lt;a href=&quot;https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/&quot;&gt;Keyless SSL: The Nitty Gritty Technical Details&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        <pubDate>Mon, 30 Nov 2015 14:32:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2015/11/30/how-https-works.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2015/11/30/how-https-works.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+      <item>
+        <title>基于userID和requestID的日志实践</title>
+        <description>&lt;p&gt;本文介绍基于浏览器-服务器架构的日志处理.&lt;/p&gt;
+
+&lt;h3 id=&quot;userid&quot;&gt;userID&lt;/h3&gt;
+
+&lt;p&gt;当用户第一次访问网站时, 将被赋予一个&lt;code&gt;userID&lt;/code&gt;. 这个&lt;code&gt;userID&lt;/code&gt;设置在cookie中, 该用户之后的所有访问都会带上该&lt;code&gt;userID&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Set-Cookie: userid=ca4bac6fe62a45169723; path=/; expires=Fri, 08 Sep 2045 07:06:07 GMT; domain=.example.com; httponly
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在记录&lt;a href=&quot;https://en.wikipedia.org/wiki/Common_Log_Format&quot;&gt;accesslog&lt;/a&gt;时, 会加入userID&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;::ffff:127.0.0.1 - ca4bac6fe62a45169723 [16/Sep/2015:15:05:13 +0800] &quot;GET / HTTP/1.X&quot; 200 72732
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;通过&lt;code&gt;userID&lt;/code&gt;, 可以查询到特定用户的所有访问记录&lt;code&gt;accesslog&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;requestid&quot;&gt;requestID&lt;/h3&gt;
+
+&lt;p&gt;除了记录访问记录外, 在处理每个用户请求过程中, 涉及业务逻辑处理和后端服务调用等, 对某些操作也需要记录相应日志和错误.&lt;/p&gt;
+
+&lt;p&gt;对每个请求, 都生成一个唯一的&lt;code&gt;requestID&lt;/code&gt;. 在这个请求的生命周期中, 所有打印的日志都会带上&lt;code&gt;requestID&lt;/code&gt;信息.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;requestID=bb56f2b0-5c43-11e5-8068-adc7f452615d message=::ffff:127.0.0.1 - ca4bac6fe62a45169723 [16/Sep/2015:15:05:13 +0800] &quot;GET / HTTP/1.X&quot; 200 72732
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;借助&lt;code&gt;requestID&lt;/code&gt;, 可以查询到特定请求的所有业务日志.&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;其他字段&lt;/h3&gt;
+
+&lt;p&gt;那么, 怎样知道一条日志是访问日志还是业务日志呢? 如果是业务日志, 又是不是我们感兴趣的业务日志?&lt;/p&gt;
+
+&lt;p&gt;在一条完整的日志中, 还需要包含其他信息, 上面提到的就是&lt;code&gt;type&lt;/code&gt;, 一条完整的日志应该包括以下内容:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;version: 日志版本, 为后续日志格式修改升级留下空间&lt;/li&gt;
+  &lt;li&gt;app: 用于在集中式日志管理系统中区分当前日志所属的应用&lt;/li&gt;
+  &lt;li&gt;host: 主机名&lt;/li&gt;
+  &lt;li&gt;level: INFO, WARN, ERROR等&lt;/li&gt;
+  &lt;li&gt;timestamp: 时间戳&lt;/li&gt;
+  &lt;li&gt;type: 日志类型, 可选, 默认为系统日志(&lt;code&gt;system&lt;/code&gt;), 还可以自己需要设置访问日志(&lt;code&gt;accesslog&lt;/code&gt;)和其他自定义的类型&lt;/li&gt;
+  &lt;li&gt;requestID: 请求ID, 可选&lt;/li&gt;
+  &lt;li&gt;message: 具体日志内容, 格式由应用自己定义, 处理和解析&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code&gt;version=2 app=app-name host=zhongchiyus-MacBook-Pro.local level=INFO timestamp=1442388168 type=accesslog requestID=bb56f2b0-5c43-11e5-8068-adc7f452615d message=::ffff:127.0.0.1 - ca4bac6fe62a45169723 [16/Sep/2015:15:22:48 +0800] &quot;POST /account/unitivelogin HTTP/1.X&quot; 200 164
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;nodejs&quot;&gt;Node.js中的实践&lt;/h3&gt;
+
+&lt;p&gt;在Node.js中, 推荐使用&lt;a href=&quot;https://github.com/winstonjs/winston&quot;&gt;winston&lt;/a&gt;打印日志, 除了丰富的功能外, 强大的&lt;a href=&quot;https://github.com/winstonjs/winston/blob/master/docs/transports.md&quot;&gt;transport&lt;/a&gt;构建了一个完善的生态.&lt;/p&gt;
+
+&lt;p&gt;在Node.js应用的开发环境&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;实时日志打印到终端&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在生产环境&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;错误日志(WARN, ERROR级别)发送到&lt;a href=&quot;https://getsentry.com/&quot;&gt;sentry&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;实时日志以文件形式存储在机器上, 临时存储一天&lt;/li&gt;
+  &lt;li&gt;延时日志发送到&lt;a href=&quot;https://flume.apache.org/&quot;&gt;flume&lt;/a&gt;, 持久存储&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;section-1&quot;&gt;参考&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/CatTail/log-starter-kit&quot;&gt;GitHub代码示例&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.bitstech.net/2014/01/07/log-best-practice/&quot;&gt;bits technology 最佳日志实践&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        <pubDate>Tue, 15 Sep 2015 18:21:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2015/09/15/logging-with-userid-and-requestid.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2015/09/15/logging-with-userid-and-requestid.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+      <item>
+        <title>追求美的心</title>
+        <description>&lt;p&gt;作为一个实用主义者和男人，我以前一直认为女人对诸如染头发和买华丽的包包只不过是因为她们愚蠢的被格式广告和潮流所欺骗，我甚至认为，这是在漫长的物竞天择后出现的吸引男人的一种方式。&lt;/p&gt;
+
+&lt;p&gt;自从脱离了单身后，我却发现自己太傲慢了。我家的妞妞让我明白，这些费钱但是“无用”的东西，的确是为了变得更美。但是这种美不仅是为了让别人看到，更多的是让自己感受到，让自己意识到自己的青春和活力。&lt;/p&gt;
+
+&lt;p&gt;一颗追求美的心，远远比“有用”要“有用”。&lt;/p&gt;
+</description>
+        <pubDate>Thu, 29 Jan 2015 10:00:00 +0800</pubDate>
+        <link>https://cattail.me/life/2015/01/29/pursue-for-beauty.html</link>
+        <guid isPermaLink="true">https://cattail.me/life/2015/01/29/pursue-for-beauty.html</guid>
+        
+        
+        <category>life</category>
+        
+      </item>
+    
+      <item>
+        <title>异步IO初探</title>
+        <description>
+</description>
+        <pubDate>Tue, 21 Oct 2014 13:46:00 +0800</pubDate>
+        <link>https://cattail.me/slide/2014/10/21/introduce-to-asyncio.html</link>
+        <guid isPermaLink="true">https://cattail.me/slide/2014/10/21/introduce-to-asyncio.html</guid>
+        
+        
+        <category>slide</category>
+        
+      </item>
+    
+      <item>
+        <title>Node.js源码阅读笔记</title>
+        <description>&lt;p&gt;本文通过阅读Node.js(&lt;a href=&quot;https://github.com/joyent/node/tree/v0.11.9&quot;&gt;版本0.11.9&lt;/a&gt;)的代码, 试图理解两个问题&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;C++和JS是如何交互的&lt;/li&gt;
+  &lt;li&gt;异步是如何实现的, event loop在其中充当什么角色&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;目录&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;#两个问题&quot;&gt;两个问题&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#c++和javascript交互&quot;&gt;C++和Javascript交互&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#node.js初始化&quot;&gt;Node.js初始化&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;#node.js模块&quot;&gt;Node.js模块&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#process.binding&quot;&gt;process.binding&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#模块小结&quot;&gt;模块小结&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#异步实现&quot;&gt;异步实现&lt;/a&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href=&quot;#追踪fs.readfile回调&quot;&gt;追踪fs.readFile回调&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#创建运行event-loop&quot;&gt;创建运行event loop&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#深入libuv&quot;&gt;深入libuv&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href=&quot;#异步小结&quot;&gt;异步小结&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#总结&quot;&gt;总结&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;#相关参考&quot;&gt;相关参考&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;section&quot;&gt;两个问题&lt;/h2&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;最大调用栈&lt;/h3&gt;
+&lt;p&gt;如果直接调用一下代码, 会造成调用栈过深&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;function foo() {
+    foo();
+}
+foo();
+// Maximum call stack size exceeded
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;然而, 将递归调用放到异步回调中, 就避免了调用栈过深&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;function foo() {
+    setTimeout(foo, 0);
+}
+foo();
+// all right. browser never block, code execute normally.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;队列优先级&lt;/h3&gt;
+&lt;p&gt;下面是一个文件读取操作, 多次试验, 输出的文件平均读取耗时为40mm&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;var start = Date.now();
+
+fs.readFile(&quot;data.txt&quot;, function() {
+    console.log(Date.now() - start);
+});
+// 35, 38, 40, 37, 42
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;我们设定两个计时器, 一个比文件读取时间短(0), 另一个要长(100), 最后输出结果在注释中&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;var fs = require(&#39;fs&#39;);
+
+var start = Date.now();
+
+setTimeout(function() {
+    console.log(&#39;First timer&#39;);
+}, 0);
+
+fs.readFile(&quot;data.txt&quot;, function() {
+    console.log(&#39;Async Operation&#39;, Date.now() - start);
+});
+
+setTimeout(function() {
+    console.log(&#39;Second timer&#39;);
+}, 100);
+
+// First timer 12
+// Async Operation 36
+// Second timer 108
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这样的结果我们是能够理解的, 第一个计时器最快完成(0mm), 然后文件读取完成(37mm), 最后一个计时器最后完成.&lt;/p&gt;
+
+&lt;p&gt;但是, 如果像下面代码, 我们使用循环阻塞整个进程, 直到所有任务都完成后, 在执行回调, 结果是怎样呢?&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;var fs = require(&#39;fs&#39;);
+
+var start = Date.now();
+
+setTimeout(function() {
+    console.log(&#39;First timer&#39;, Date.now() - start);
+}, 0);
+
+fs.readFile(&quot;data.txt&quot;, function() {
+    console.log(&#39;Async Operation&#39;, Date.now() - start);
+});
+
+setTimeout(function() {
+    console.log(&#39;Second timer&#39;, Date.now() - start);
+}, 100);
+
+while(1) {
+    if ((Date.now() - start) &amp;gt; 200) {
+        break;
+    }
+}
+
+// First timer 212
+// Second timer 213
+// Async Operation 238
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;结果先执行两个计时器, 最后执行IO操作. 下面是一个类似的浏览器上的例子&lt;/p&gt;
+
+&lt;iframe width=&quot;100%&quot; height=&quot;300&quot; src=&quot;https://jsfiddle.net/cattail/bkghxdfr/8/embedded/&quot; allowfullscreen=&quot;allowfullscreen&quot; frameborder=&quot;0&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;为了理解这两个问题, 我们需要理解event loop背后的原理, 回答一些问题 — 1) 多线程? 2) 多堆栈? 3) 多队列?&lt;/p&gt;
+
+&lt;h2 id=&quot;cjavascript&quot;&gt;C++和Javascript交互&lt;/h2&gt;
+&lt;p&gt;通过v8源码的示例&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/deps/v8/samples/process.cc&quot;&gt;process.cc&lt;/a&gt;和&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/deps/v8/samples/count-hosts.js&quot;&gt;count-hosts.js&lt;/a&gt;, 我们可以了解C++和Javascript代码是如何进行交互的.&lt;/p&gt;
+
+&lt;p&gt;通过在C++代码中使用v8引擎提供的接口, 可以在Javascript运行上下文中插入使用C++定义的变量(或函数); 同时, 也可以取出Javascript在此上下文中定义的变量(或函数等), 在C++代码中执行.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;在Javascript代码中使用通过C++定义的函数&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;首先创建全局对象, 用于存放build-in函数&lt;code&gt;log&lt;/code&gt; &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/deps/v8/samples/process.cc#L164&quot;&gt;source&lt;/a&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;Handle&amp;lt;ObjectTemplate&amp;gt; global = ObjectTemplate::New();
+global-&amp;gt;Set(String::New(&quot;log&quot;), FunctionTemplate::New(LogCallback));
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在Javascript中, 就可以使用log函数输出日志 &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/deps/v8/samples/count-hosts.js#L32&quot;&gt;source&lt;/a&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;log(&quot;Processing &quot; + request.host + request.path + &quot; from &quot; + request.referrer + &quot;@&quot; + request.userAgent);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;在C++中获得使用Javascript定义的函数&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;在count-hosts.js中定义全局函数Process&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;function Process(request) { ... }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在process.cc中, 先取出该函数 &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/deps/v8/samples/process.cc#L189&quot;&gt;source&lt;/a&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;Handle&amp;lt;String&amp;gt; process_name = String::New(&quot;Process&quot;);
+Handle&amp;lt;Value&amp;gt; process_val = context-&amp;gt;Global()-&amp;gt;Get(process_name);
+Handle&amp;lt;Function&amp;gt; process_fun = Handle&amp;lt;Function&amp;gt;::Cast(process_val);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;之后再调用它&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;const int argc = 1;
+Handle&amp;lt;Value&amp;gt; argv[argc] = { request_obj };
+v8::Local&amp;lt;v8::Function&amp;gt; process = v8::Local&amp;lt;v8::Function&amp;gt;::New(GetIsolate(), process_);
+Handle&amp;lt;Value&amp;gt; result = process-&amp;gt;Call(context-&amp;gt;Global(), argc, argv);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;nodejs&quot;&gt;Node.js初始化&lt;/h2&gt;
+
+&lt;p&gt;为了理解event loop的实现, 首先要对Node.js初始化和模块有所了解.&lt;/p&gt;
+
+&lt;p&gt;Node.js的初始化调用链是这样的, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_main.cc#L64&quot;&gt;main&lt;/a&gt; -&amp;gt; &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L3224&quot;&gt;Start&lt;/a&gt; -&amp;gt; &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L3177&quot;&gt;CreateEnvironment&lt;/a&gt; -&amp;gt; &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L2520&quot;&gt;Load&lt;/a&gt;, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L3224&quot;&gt;Start&lt;/a&gt;过程中启用了event loop&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;int Start(int argc, char** argv) {
+    ...
+    Environment* env =
+        CreateEnvironment(node_isolate, argc, argv, exec_argc, exec_argv);
+    ...
+*    uv_run(env-&amp;gt;event_loop(), UV_RUN_DEFAULT);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L2520&quot;&gt;node:Load&lt;/a&gt;加载了&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.js&quot;&gt;node.js&lt;/a&gt;, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.js&quot;&gt;node.js&lt;/a&gt;是第一个被加载的Javascript文件, 它负责初始化Node.js的全局变量和函数, 如setTimeout, nextTick等.&lt;/p&gt;
+
+&lt;h3 id=&quot;nodejs-1&quot;&gt;Node.js模块&lt;/h3&gt;
+&lt;p&gt;Node.js中, 模块是通过&lt;code&gt;require&lt;/code&gt;来加载的, 其背后实现代码在&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.js#L968&quot;&gt;NativeModule.require&lt;/a&gt;中.&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;NativeModule.require&lt;/code&gt;首先检测模块是否在缓存中,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;NativeModule.require = function(id) {
+    ...
+    var cached = NativeModule.getCached(id);
+    if (cached) {
+        return cached.exports;
+    }
+    ...
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;如果没有则读取该模块文件内容, 并调用&lt;code&gt;runInThisContext&lt;/code&gt;执行Javascript模块代码&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;NativeModule.require = function(id) {
+    ...
+    var nativeModule = new NativeModule(id);
+
+    nativeModule.cache();
+    nativeModule.compile();
+
+    return nativeModule.exports;
+};
+
+NativeModule.prototype.compile = function() {
+    var source = NativeModule.getSource(this.id);
+    source = NativeModule.wrap(source);
+
+    var fn = runInThisContext(source, { filename: this.filename });
+    fn(this.exports, NativeModule.require, this, this.filename);
+
+    this.loaded = true;
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;那么&lt;code&gt;runInThisContext&lt;/code&gt;是怎样实现的呢?&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;var ContextifyScript = process.binding(&#39;contextify&#39;).ContextifyScript;
+function runInThisContext(code, options) {
+    var script = new ContextifyScript(code, options);
+    return script.runInThisContext();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;稍后将介绍&lt;code&gt;process.binding&lt;/code&gt;的实现. 通过grep代码, 在&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_contextify.cc&quot;&gt;node_contextify.cc&lt;/a&gt;找到了&lt;code&gt;contextify&lt;/code&gt;的C++实现.&lt;/p&gt;
+
+&lt;p&gt;可以预见, &lt;code&gt;process.binding&lt;/code&gt;作为一个桥梁, 使用我们上面介绍C++和Javascript交互的技术, 使得Node.js可以调用C++中实现的代码.&lt;/p&gt;
+
+&lt;h3 id=&quot;processbinding&quot;&gt;process.binding&lt;/h3&gt;
+&lt;p&gt;我们可以在之前提到的Node.js初始化代码中，找到&lt;code&gt;process.binding&lt;/code&gt;的实现.&lt;/p&gt;
+
+&lt;p&gt;在&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L3177&quot;&gt;node:CreateEnvironment&lt;/a&gt;过程中, 会初始化&lt;code&gt;process&lt;/code&gt;对象, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L2472&quot;&gt;设置&lt;code&gt;process.binding&lt;/code&gt;&lt;/a&gt;方法&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;Environment* CreateEnvironment() {
+  ...
+  SetupProcessObject(env, argc, argv, exec_argc, exec_argv);
+  ...
+}
+
+void SetupProcessObject() {
+  ...
+  NODE_SET_METHOD(process, &quot;binding&quot;, Binding);
+  ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L1900&quot;&gt;Binding&lt;/a&gt;方法接受参数, 然后通过&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L1924&quot;&gt;调用&lt;code&gt;get_buildin_module&lt;/code&gt;&lt;/a&gt;返回使用C++编写的模块&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;static void Binding(const FunctionCallbackInfo&amp;lt;Value&amp;gt;&amp;amp; args) {
+  ...
+  node_module_struct* mod = get_builtin_module(*module_v);
+  if (mod != NULL) {
+    exports = Object::New();
+    // Internal bindings don&#39;t have a &quot;module&quot; object, only exports.
+    assert(mod-&amp;gt;register_func == NULL);
+    assert(mod-&amp;gt;register_context_func != NULL);
+    Local&amp;lt;Value&amp;gt; unused = Undefined(env-&amp;gt;isolate());
+    mod-&amp;gt;register_context_func(exports, unused, env-&amp;gt;context());
+    cache-&amp;gt;Set(module, exports);
+  } else if (!strcmp(*module_v, &quot;constants&quot;)) {
+    exports = Object::New();
+    DefineConstants(exports);
+    cache-&amp;gt;Set(module, exports);
+  } else if (!strcmp(*module_v, &quot;natives&quot;)) {
+    exports = Object::New();
+    DefineJavaScript(exports);
+    cache-&amp;gt;Set(module, exports);
+  } else {
+    return ThrowError(&quot;No such module&quot;);
+  }
+
+  args.GetReturnValue().Set(exports);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_extensions.cc#L52&quot;&gt;get_builtin_module&lt;/a&gt;通过事先注册的模块列表&lt;code&gt;node_module_list&lt;/code&gt;来加载模块, &lt;code&gt;node_module_list&lt;/code&gt;是通过宏实现的.&lt;/p&gt;
+
+&lt;p&gt;在src/node_extensions.h中定义宏&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_extensions.h#L33&quot;&gt;NODE_EXT_LIST&lt;/a&gt;, 其中包含了使用C++编写的模块&lt;/p&gt;
+
+&lt;p&gt;在src/node_extensions.cc中, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_extensions.cc#L48&quot;&gt;调用宏&lt;/a&gt;, 展开过程中使用到得诸如&lt;code&gt;node_fs_module&lt;/code&gt;变量则是在每个C++模块底部定义的&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;NODE_MODULE_CONTEXT_AWARE(node_contextify, node::InitContextify);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这个宏展开后的结果是&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;extern &quot;C&quot; {
+    node::node_module_struct node_contextify_module = {
+        13 , __null , __FILE__ , __null , ( node::InitContextify ), &quot;node_contextify&quot;}
+    ;
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;get_builtin_module&lt;/code&gt;中获取了C++模块后, 通过使用&lt;code&gt;register_context_func&lt;/code&gt;模块自己制定的&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_file.cc#L1059&quot;&gt;注册函数&lt;/a&gt;完成注册的步骤.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;mod-&amp;gt;register_context_func(exports, unused, env-&amp;gt;context());
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;section-3&quot;&gt;模块小结&lt;/h3&gt;
+&lt;p&gt;Node.js使用C++来实现系统调用, 在每个C++模块底部都将该模块注册到一个全局队列中. 当这些模块被&lt;code&gt;require&lt;/code&gt;时, 将检索全局队列, 初始化, 导出该模块.&lt;/p&gt;
+
+&lt;p&gt;如果你编写过Node.js &lt;a href=&quot;http://nodejs.org/api/addons.html&quot;&gt;C++ Addon&lt;/a&gt;, 就会发现Addon也需要通过宏来注册自己.&lt;/p&gt;
+
+&lt;h2 id=&quot;section-4&quot;&gt;异步实现&lt;/h2&gt;
+
+&lt;h3 id=&quot;fsreadfile&quot;&gt;追踪fs.readFile回调&lt;/h3&gt;
+&lt;p&gt;为了追查异步调用的实现, 我们先从一个常用的异步方法&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/lib/fs.js#L172&quot;&gt;fs.readFile&lt;/a&gt;开始,&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;fs.readFile&lt;/code&gt;使用&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/lib/fs.js#L413&quot;&gt;fs.read&lt;/a&gt;来读取数据, 并最终调用&lt;code&gt;binding.read&lt;/code&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;fs.read = function(fd, buffer, offset, length, position, callback) {
+  ...
+  binding.read(fd, buffer, offset, length, position, wrapper);
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;其中&lt;code&gt;binding&lt;/code&gt;是这样定义的&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;var binding = process.binding(&#39;fs&#39;);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;根据我们上节讲到得&lt;code&gt;process.binding&lt;/code&gt;魔法, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_file.cc&quot;&gt;node_file.cc&lt;/a&gt;为文件操作提供了最终实现.&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;fs.read&lt;/code&gt;在&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_file.cc&quot;&gt;node_file.cc&lt;/a&gt;中实现为&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node_file.cc#L803&quot;&gt;Read&lt;/a&gt;, 这个实现是对&lt;code&gt;read(2)&lt;/code&gt;的一个包装.&lt;/p&gt;
+
+&lt;p&gt;在&lt;code&gt;Read&lt;/code&gt;中, 获取了异步调用的回调函数, 并将其传入&lt;code&gt;ASYNC_CALL&lt;/code&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;static void Read(const FunctionCallbackInfo&amp;lt;Value&amp;gt;&amp;amp; args) {
+    ...
+    cb = args[5];
+
+    if (cb-&amp;gt;IsFunction()) {
+        ASYNC_CALL(read, cb, fd, buf, len, pos);
+    } else {
+        SYNC_CALL(read, 0, fd, buf, len, pos)
+        args.GetReturnValue().Set(SYNC_RESULT);
+    }
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;宏展开&lt;code&gt;async&lt;/code&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;Environment* env = Environment::GetCurrent(args.GetIsolate());
+FSReqWrap* req_wrap = new FSReqWrap(env, &quot;read&quot; );
+int err = uv_fs_read (env-&amp;gt;event_loop(), &amp;amp;req_wrap-&amp;gt;req_, fd , buf , len , pos , After);
+req_wrap-&amp;gt;object()-&amp;gt;Set(env-&amp;gt;oncomplete_string(), cb );
+req_wrap-&amp;gt;Dispatched();
+if (err &amp;lt; 0) {
+    uv_fs_t* req = &amp;amp;req_wrap-&amp;gt;req_;
+    req-&amp;gt;result = err;
+    req-&amp;gt;path = __null ;
+    After(req);
+}
+args.GetReturnValue().Set(req_wrap-&amp;gt;persistent());
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在libuv中, &lt;code&gt;uv_fs_read&lt;/code&gt;的定义是这样的,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;UV_EXTERN int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file,void* buf, size_t length, int64_t offset, uv_fs_cb cb);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;它使用event loop的核心数据结构&lt;code&gt;loop&lt;/code&gt;, 当文件读取操作完成后, 将会调用回调函数&lt;code&gt;cb&lt;/code&gt;. 接下来我们来看看 libuv是如何实现完成事件调用函数的功能的.&lt;/p&gt;
+
+&lt;h3 id=&quot;event-loop&quot;&gt;创建运行event loop&lt;/h3&gt;
+
+&lt;p&gt;Node.js初始化过程中, &lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L3177&quot;&gt;CreateEnvironment&lt;/a&gt;使用&lt;code&gt;uv_default_loop&lt;/code&gt;创建了event loop中使用的核心数据结构&lt;code&gt;loop&lt;/code&gt;, 在&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/src/node.cc#L3224&quot;&gt;node:Start&lt;/a&gt;中通过&lt;code&gt;uv_run&lt;/code&gt;启用event loop(见&lt;a href=&quot;#node.js初始化&quot;&gt;Node.js初始化&lt;/a&gt;)&lt;/p&gt;
+
+&lt;h3 id=&quot;libuv&quot;&gt;深入libuv&lt;/h3&gt;
+&lt;p&gt;理解libuv分两条线索, 任务的提交和任务的处理.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;任务提交&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;仍以文件读取为例, 上面已经讲到&lt;code&gt;uv_fs_read&lt;/code&gt;会在文件可用时调用回调.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;uv_fs_read (env-&amp;gt;event_loop(), &amp;amp;req_wrap-&amp;gt;req_, fd , buf , len , pos , After);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;uv_fs_read&lt;/code&gt;是这样定义的(deps/uv/src/unix/fs.c)&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;int uv_fs_read() {
+  ...
+  do {
+      if ((cb) != ((void*)0) ) {
+*          uv__work_submit((loop), &amp;amp;(req)-&amp;gt;work_req, uv__fs_work, uv__fs_done);
+          return 0;
+      }
+      else {
+          uv__fs_work(&amp;amp;(req)-&amp;gt;work_req);
+          uv__fs_done(&amp;amp;(req)-&amp;gt;work_req, 0);
+          return (req)-&amp;gt;result;
+      }
+  }
+  ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;最后文件读取任务被插入任务队列, 等待线程池中线程空闲后执行,&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/joyent/node/blob/v0.11.9/deps/uv/src/unix/threadpool.c#L156&quot;&gt;source&lt;/a&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-cpp&quot;&gt;void uv__work_submit() {
+  uv_once(&amp;amp;once, init_once);
+  w-&amp;gt;loop = loop;
+  w-&amp;gt;work = work;
+  w-&amp;gt;done = done;
+  post(&amp;amp;w-&amp;gt;wq);
+}
+
+static void post(QUEUE* q) {
+  uv_mutex_lock(&amp;amp;mutex);
+  QUEUE_INSERT_TAIL(&amp;amp;wq, q);
+  uv_cond_signal(&amp;amp;cond);
+  uv_mutex_unlock(&amp;amp;mutex);
+}
+
+#define QUEUE_INSERT_TAIL(h, q)                                               \
+  do {                                                                        \
+    QUEUE_NEXT(q) = (h);                                                      \
+    QUEUE_PREV(q) = QUEUE_PREV(h);                                            \
+    QUEUE_PREV_NEXT(q) = (q);                                                 \
+    QUEUE_PREV(h) = (q);                                                      \
+  }                                                                           \
+  while (0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;任务处理&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;uv_default_loop&lt;/code&gt;创建并初始化了loop对象,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-c&quot;&gt;uv_loop_t* uv_default_loop(void) {
+  if (default_loop_ptr != NULL)
+    return default_loop_ptr;
+
+  if (uv__loop_init(&amp;amp;default_loop_struct, /* default_loop? */ 1))
+    return NULL;
+
+  default_loop_ptr = &amp;amp;default_loop_struct;
+  return default_loop_ptr;
+}
+
+static int uv__loop_init(uv_loop_t* loop, int default_loop) {
+  ...
+  memset(loop, 0, sizeof(*loop));
+  RB_INIT(&amp;amp;loop-&amp;gt;timer_handles);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;wq);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;active_reqs);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;idle_handles);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;async_handles);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;check_handles);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;prepare_handles);
+  QUEUE_INIT(&amp;amp;loop-&amp;gt;handle_queue);
+  ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;uv_run&lt;/code&gt;不断循环检测是否还有待处理任务, 如果有则执行该任务关联的回调; 如果没有待处理的任务, 程序就结束了.&lt;/p&gt;
+
+&lt;p&gt;在这里还可以看到, 对于&lt;code&gt;timer&lt;/code&gt;和&lt;code&gt;io&lt;/code&gt;任务队列的处理优先级是不同的.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-c&quot;&gt;int uv_run(uv_loop_t* loop, uv_run_mode mode) {
+  ...
+  r = uv__loop_alive(loop);
+  while (r != 0 &amp;amp;&amp;amp; loop-&amp;gt;stop_flag == 0) {
+    UV_TICK_START(loop, mode);
+
+    uv__update_time(loop);
+    uv__run_timers(loop);
+    uv__run_idle(loop);
+    uv__run_prepare(loop);
+    uv__run_pending(loop);
+
+    timeout = 0;
+    if ((mode &amp;amp; UV_RUN_NOWAIT) == 0)
+      timeout = uv_backend_timeout(loop);
+
+    uv__io_poll(loop, timeout);
+    uv__run_check(loop);
+    uv__run_closing_handles(loop);
+
+    if (mode == UV_RUN_ONCE) {
+      uv__update_time(loop);
+      uv__run_timers(loop);
+    }
+
+    r = uv__loop_alive(loop);
+    UV_TICK_STOP(loop, mode);
+
+    if (mode &amp;amp; (UV_RUN_ONCE | UV_RUN_NOWAIT))
+      break;
+  }
+  ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;event loop的伪代码是这样的&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;while there are still events to process:
+    e = get the next event
+    if there is a callback associated with e:
+        call the callback
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;section-5&quot;&gt;异步小结&lt;/h3&gt;
+&lt;p&gt;Javascript的异步IO最终使用libuv, 将任务提交到线程池中进行处理. Javascript代码仍然在一条主线程中, 不需要考虑变量共享和锁的问题.&lt;/p&gt;
+
+&lt;p&gt;但是背后有多个工作线程处理异步IO操作, 使得Node.js能高校处理IO操作.&lt;/p&gt;
+
+&lt;h2 id=&quot;section-6&quot;&gt;总结&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;C++能够通过v8提供的API获取并修改Javascript执行上下文&lt;/li&gt;
+  &lt;li&gt;暴露在Node.js环境中的系统调用最终是使用C++编写的&lt;/li&gt;
+  &lt;li&gt;在Node.js中调用IO接口后, 会将任务提交到线程池中执行. Node.js程序员看到的是单线程的Javascript代码, 但是最终任务是多线程处理的.&lt;br /&gt;
+&lt;img src=&quot;/assets/node-thread-model.png&quot; alt=&quot;thread model&quot; /&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;最后解答文章开头两个问题&lt;/p&gt;
+
+&lt;h3 id=&quot;section-7&quot;&gt;最大调用栈&lt;/h3&gt;
+&lt;p&gt;使用一部调用进行递归可以避免调用栈过深的原因是, 每次回调函数执行时候, 栈已经被清空; 只有栈清空时, event loop才有机会检测事件队列, 执行回调函数.&lt;/p&gt;
+
+&lt;h3 id=&quot;section-8&quot;&gt;队列优先级&lt;/h3&gt;
+&lt;p&gt;在上面已经提到, 不同的异步操作队列是有优先级的, 通常timer会高于IO操作. 当然, 前提当event loop在检测时他们都处于完成状态.&lt;/p&gt;
+
+&lt;p&gt;执行Javascript代码的v8引擎和event loop在同一个主线程上, 这导致我们使用&lt;code&gt;while&lt;/code&gt;循环执行Javascript代码时, 无法检测操作状态, 直到退出&lt;code&gt;while&lt;/code&gt;循环, event loop看到都已经处于完成状态的操作, 按照队列优先级执行这些操作的回调.&lt;/p&gt;
+
+&lt;h2 id=&quot;section-9&quot;&gt;相关参考&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/joyent/node/tree/v0.11.9&quot;&gt;node&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/joyent/libuv&quot;&gt;libuv&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://nikhilm.github.io/uvbook/&quot;&gt;An Introduction to libuv&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://libevent.org/&quot;&gt;libevent&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+</description>
+        <pubDate>Thu, 16 Oct 2014 17:56:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2014/10/16/nodejs-source-reading-note.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2014/10/16/nodejs-source-reading-note.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+      <item>
+        <title>libevent源码阅读笔记</title>
+        <description>&lt;p&gt;libevent版本(release-2.0.21-stable)&lt;/p&gt;
+
+&lt;h2 id=&quot;section&quot;&gt;目的&lt;/h2&gt;
+&lt;p&gt;理解event loop是如何工作的&lt;/p&gt;
+
+&lt;h2 id=&quot;section-1&quot;&gt;笔记&lt;/h2&gt;
+&lt;p&gt;libevent根据不同平台(linux, windows etc)来选择使用不同实际后端方法(backend method), 如&lt;code&gt;select&lt;/code&gt;, &lt;code&gt;poll&lt;/code&gt;, &lt;code&gt;epoll&lt;/code&gt;等，实现事件驱动(event-drivin)方法调用.&lt;/p&gt;
+
+&lt;p&gt;下面以&lt;code&gt;epoll&lt;/code&gt;作为backend method来研究源码&lt;/p&gt;
+
+&lt;p&gt;在做其他操作之前，需要创建&lt;code&gt;event_base&lt;/code&gt;对象,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;struct event_base *base = event_base_new();
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在创建&lt;code&gt;event_base&lt;/code&gt;对象过程中, 会选择合适的backend method(上面已经假设选择&lt;code&gt;epoll&lt;/code&gt;作为backend method), 调用&lt;code&gt;epoll_create&lt;/code&gt;方法创建&lt;code&gt;epoll&lt;/code&gt; fd, 创建并初始化&lt;code&gt;epollop&lt;/code&gt;结构, 存储在&lt;code&gt;base-&amp;gt;evbase&lt;/code&gt;中. &lt;code&gt;evbase&lt;/code&gt;存储了backend method相关的数据结构. 如epoll作为backend时, &lt;code&gt;evbase&lt;/code&gt;存储结构&lt;code&gt;epollop&lt;/code&gt;(见下面结构参考). &lt;br /&gt;
+&lt;sup&gt;[1][2]&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;之后用户根据对fd中感兴趣的变化创建事件, &lt;code&gt;event_new&lt;/code&gt;创建并初始化事件,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;struct event *ev1, *ev2;
+struct timeval five_seconds = {5,0};
+
+ev1 = event_new(base, fd1, EV_TIMEOUT|EV_READ|EV_PERSIST, cb_func,(char*)&quot;Reading event&quot;);
+ev2 = event_new(base, fd2, EV_WRITE|EV_PERSIST, cb_func, (char*)&quot;Writing event&quot;);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;event_base&lt;/code&gt;内部通过一个哈希表(&lt;code&gt;base-&amp;gt;io&lt;/code&gt;)存储fd和它绑定的事件列表. 其中fd作为哈希表的key, 一个包含绑定事件列表的结构作为哈希表的值.&lt;br /&gt;
+&lt;sup&gt;[3][4][5]&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;使用&lt;code&gt;event_add&lt;/code&gt;将事件增加到&lt;code&gt;event_base&lt;/code&gt;的哈希表中.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;event_add(ev1, &amp;amp;five_seconds);
+event_add(ev2, NULL);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在将事件增加到哈希表的过程中, 通过调用&lt;code&gt;epoll_ctl&lt;/code&gt;将事件注册到内核中(kernel).&lt;br /&gt;
+&lt;sup&gt;[6][7][8][9]&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;当一切设置完毕后, 就可以开始事件循环&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;event_base_loop(base);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;event_base_loop&lt;/code&gt;使用backend dispatch方法, 监听变更事件列表, 修改事件状态(一般pending-&amp;gt;active), 并调用绑定的回调列表.&lt;/p&gt;
+
+&lt;h2 id=&quot;section-2&quot;&gt;总结&lt;/h2&gt;
+&lt;p&gt;什么是event loop, libevent是如何工作的?&lt;/p&gt;
+
+&lt;p&gt;当用户将事件绑定到&lt;code&gt;event_base&lt;/code&gt;, 调用&lt;code&gt;event_base_loop&lt;/code&gt;启用event loop.&lt;/p&gt;
+
+&lt;p&gt;在事件循环中, libevent不断通过底层API获取文件描述符的事件更改. 通过遍历变更文件描述符列表, 执行对应文件描述符注册的时间回调列表.&lt;/p&gt;
+
+&lt;p&gt;直到特定条件发生(如&lt;code&gt;event_base&lt;/code&gt;中没有注册的事件), 事件循环将终止.&lt;/p&gt;
+
+&lt;h2 id=&quot;section-3&quot;&gt;重点代码&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L107&quot;&gt;event_base_new&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L107&quot;&gt;epoll_init&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/event.c#L1966&quot;&gt;event_add&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/event.c#L2073&quot;&gt;invoke evmap_io_add&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/evmap.c#L283&quot;&gt;evmap_io_add&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/evmap.c#L320&quot;&gt;invoke backend method to add event&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L351&quot;&gt;epoll_nochangelist_add&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L173&quot;&gt;epoll_apply_one_change&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L265&quot;&gt;invoke epoll_ctl&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/event.c#L1607&quot;&gt;invoke backend dispatch&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L407&quot;&gt;epoll_wait&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/epoll.c#L439&quot;&gt;mark event&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent/blob/release-2.0.21-stable/event.c#L1621&quot;&gt;execute callbacks&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;section-4&quot;&gt;结构参考 (仅展现结构中本文描述的部分)&lt;/h2&gt;
+
+&lt;h3 id=&quot;eventbase&quot;&gt;event_base&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;struct event_base {
+     /** Function pointers and other data to describe this event_base&#39;s
+      * backend. */
+     const struct eventop *evsel;
+     /** Pointer to backend-specific data. */
+     void *evbase;
+
+     /** Number of virtual events */
+     int virtual_event_count;
+     /** Maximum number of virtual events active */
+     int virtual_event_count_max;
+     /** Number of total events added to this event_base */
+     int event_count;
+     /** Maximum number of total events added to this event_base */
+     int event_count_max;
+     /** Number of total events active in this event_base */
+     int event_count_active;
+     /** Maximum number of total events active in this event_base */
+     int event_count_active_max;
+
+     /** Set if we should terminate the loop once we&#39;re done processing
+      * events. */
+     int event_gotterm;
+     /** Set if we should terminate the loop immediately */
+     int event_break;
+     /** Set if we should start a new instance of the loop immediately. */
+     int event_continue;
+
+     /** The currently running priority of events */
+     int event_running_priority;
+
+     /** Set if we&#39;re running the event_base_loop function, to prevent
+      * reentrant invocation. */
+     int running_loop;
+
+     /** Set to the number of deferred_cbs we&#39;ve made &#39;active&#39; in the
+      * loop.  This is a hack to prevent starvation; it would be smarter
+      * to just use event_config_set_max_dispatch_interval&#39;s max_callbacks
+      * feature */
+     int n_deferreds_queued;
+
+     /* Active event management. */
+     /** An array of nactivequeues queues for active event_callbacks (ones
+      * that have triggered, and whose callbacks need to be called).  Low
+      * priority numbers are more important, and stall higher ones.
+      */
+     struct evcallback_list *activequeues;
+     /** The length of the activequeues array */
+     int nactivequeues;
+     /** A list of event_callbacks that should become active the next time
+      * we process events, but not this time. */
+     struct evcallback_list active_later_queue;
+
+     /** Mapping from file descriptors to enabled (added) events */
+     struct event_io_map io;
+
+     /** Mapping from signal numbers to enabled (added) events. */
+     struct event_signal_map sigmap;
+
+     /** The event whose callback is executing right now */
+     struct event_callback *current_event;
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;eventop&quot;&gt;eventop&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;struct eventop {
+     /** The name of this backend. */
+     const char *name;
+     /** Function to set up an event_base to use this backend.  It should
+      * create a new structure holding whatever information is needed to
+      * run the backend, and return it.  The returned pointer will get
+      * stored by event_init into the event_base.evbase field.  On failure,
+      * this function should return NULL. */
+     void *(*init)(struct event_base *);
+     /** Enable reading/writing on a given fd or signal.  &#39;events&#39; will be
+      * the events that we&#39;re trying to enable: one or more of EV_READ,
+      * EV_WRITE, EV_SIGNAL, and EV_ET.  &#39;old&#39; will be those events that
+      * were enabled on this fd previously.  &#39;fdinfo&#39; will be a structure
+      * associated with the fd by the evmap; its size is defined by the
+      * fdinfo field below.  It will be set to 0 the first time the fd is
+      * added.  The function should return 0 on success and -1 on error.
+      */
+     int (*add)(struct event_base *, evutil_socket_t fd, short old, short events, void *fdinfo);
+     /** As &quot;add&quot;, except &#39;events&#39; contains the events we mean to disable. */
+     int (*del)(struct event_base *, evutil_socket_t fd, short old, short events, void *fdinfo);
+     /** Function to implement the core of an event loop.  It must see which
+         added events are ready, and cause event_active to be called for each
+         active event (usually via event_io_active or such).  It should
+         return 0 on success and -1 on error.
+      */
+     int (*dispatch)(struct event_base *, struct timeval *);
+     /** Function to clean up and free our data from the event_base. */
+     void (*dealloc)(struct event_base *);
+     /** Flag: set if we need to reinitialize the event base after we fork.
+      */
+     int need_reinit;
+     /** Bit-array of supported event_method_features that this backend can
+      * provide. */
+     enum event_method_feature features;
+     /** Length of the extra information we should record for each fd that
+         has one or more active events.  This information is recorded
+         as part of the evmap entry for each fd, and passed as an argument
+         to the add and del functions above.
+      */
+     size_t fdinfo_len;
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;eventiomap&quot;&gt;event_io_map&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;struct event_io_map {
+     /* An array of evmap_io * or of evmap_signal *; empty entries are
+      * set to NULL. */
+     void **entries;
+     /* The number of entries available in entries */
+     int nentries;
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;evmapio&quot;&gt;evmap_io&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;/** An entry for an evmap_io list: notes all the events that want to read or
+     write on a given fd, and the number of each.
+  */
+struct evmap_io {
+     struct event_dlist events;
+     ev_uint16_t nread;
+     ev_uint16_t nwrite;
+     ev_uint16_t nclose;
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;epollop&quot;&gt;epollop&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;struct epollop {
+     struct epoll_event *events;
+     int nevents;
+     int epfd;
+#ifdef USING_TIMERFD
+     int timerfd;
+#endif
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;epollevent&quot;&gt;epoll_event&lt;/h3&gt;
+&lt;pre&gt;&lt;code&gt;typedef union epoll_data {
+    void        *ptr;
+    int          fd;
+    uint32_t     u32;
+    uint64_t     u64;
+} epoll_data_t;
+
+struct epoll_event {
+    uint32_t     events;      /* Epoll events */
+    epoll_data_t data;        /* User data variable */
+};
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;section-5&quot;&gt;相关参考&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://libevent.org/&quot;&gt;libevent&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.wangafu.net/~nickm/libevent-2.0/doxygen/html/&quot;&gt;libevent reference&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.wangafu.net/~nickm/libevent-book/&quot;&gt;Programming with Libevent&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/libevent/libevent&quot;&gt;source code&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://man7.org/linux/man-pages/man7/epoll.7.html&quot;&gt;epoll&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        <pubDate>Wed, 15 Oct 2014 15:09:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2014/10/15/libevent-source-reading-note.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2014/10/15/libevent-source-reading-note.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+      <item>
+        <title>异步编程</title>
+        <description>
+</description>
+        <pubDate>Tue, 08 Jul 2014 00:00:00 +0800</pubDate>
+        <link>https://cattail.me/slide/2014/07/08/async-programing.html</link>
+        <guid isPermaLink="true">https://cattail.me/slide/2014/07/08/async-programing.html</guid>
+        
+        
+        <category>slide</category>
+        
+      </item>
+    
+      <item>
+        <title>对APP应用结构的思考</title>
+        <description>
+</description>
+        <pubDate>Sun, 20 Apr 2014 00:00:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2014/04/20/app-structure.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2014/04/20/app-structure.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
+    
+  </channel>
+</rss>
