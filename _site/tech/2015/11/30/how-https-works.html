@@ -1,0 +1,420 @@
+
+
+
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+
+  <title>HTTPS工作原理</title>
+  
+  <meta name="keywords" content="https,tls,ssl,证书,数字签名">
+  
+  
+  <meta name="description" content="介绍数字签名和证书,解释TLS,SSL协议以及HTTPS工作原理和实现">
+  
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="https://cattail.me/tech/2015/11/30/how-https-works.html">
+
+  <!-- Fonts -->
+  <link href='//fonts.googleapis.com/css?family=Merriweather:900,900italic,300,300italic' rel='stylesheet' type='text/css'>
+  <link href='//fonts.googleapis.com/css?family=Lato:900,300' rel='stylesheet' type='text/css'>
+
+  <script>
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-41494270-3']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 'stats.g.doubleclick.net/dc.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+</head>
+
+
+  <body>
+
+    <div class="site-wrap">
+      <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">猫尾博客</a>
+
+    <nav class="site-nav">
+        <a class="page-link" href="/lab">Lab</a>
+        <a class="page-link" href="/feed.xml">RSS</a>
+        <a class="page-link" href="/about">About</a>
+    </nav>
+
+  </div>
+
+</header>
+
+
+      <div class="body">
+        <div class="wrapper">
+          <div class="post yue">
+
+            <header class="post-header">
+              <h1 class="post-title">HTTPS工作原理</h1>
+              <span class="post-meta">
+                Nov 30, 2015
+              </span><br />
+              <span class="post-meta small">
+                3 minute read
+              </span>
+            </header>
+
+            <article class="post-content">
+              <p>目标读者：理解HTTP协议，对称和非对称加密，想要了解HTTPS协议的工作原理</p>
+
+<p>读完本文，你能明白</p>
+
+<ul>
+  <li>什么是HTTPS，TLS(SSL)，TLS和HTTPS是什么关系</li>
+  <li>什么是证书和数字签名，它们是如何传递信任的</li>
+  <li>HTTPS有什么样的功能，它是如何实现这样的功能的</li>
+</ul>
+
+<h3 id="section">简介</h3>
+
+<p>HTTPS，也称作HTTP over TLS。<a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">TLS的前身是SSL</a>，TLS 1.0通常被标示为SSL 3.1，TLS 1.1为SSL 3.2，TLS 1.2为SSL 3.3。本文着重描述TLS协议的1.2版本</p>
+
+<p>下图描述了在TCP/IP协议栈中TLS(各子协议）和HTTP的关系</p>
+
+<p><img src="/assets/how-https-works/tcp-ip-model.png" alt="tcp ip model" /></p>
+
+<blockquote>
+  <p>Credit: <a href="http://blogs.msdn.com/213737/ProfileUrlRedirect.ashx">Kaushal Kumar Panday</a> From: <a href="http://blogs.msdn.com/b/kaushal/archive/2013/08/03/ssl-handshake-and-https-bindings-on-iis.aspx">SSL Handshake and HTTPS Bindings on IIS</a></p>
+</blockquote>
+
+<p>其中Handshake protocol，Change Ciper Spec protocol和Alert protocol组成了SSL Handshaking Protocols。</p>
+
+<p>HTTPS和HTTP协议相比提供了</p>
+
+<ol>
+  <li>数据完整性：内容传输经过完整性校验</li>
+  <li>数据隐私性：内容经过对称加密，每个连接生成一个唯一的加密密钥</li>
+  <li>身份认证：第三方无法伪造服务端（客户端）身份</li>
+</ol>
+
+<p>其中，数据完整性和隐私性由TLS Record Protocol保证，身份认证由TLS Handshaking Protocols实现。</p>
+
+<h2 id="section-1">总览</h2>
+
+<p>使用RSA算法的SSL握手过程是这样的</p>
+
+<p><img src="/assets/how-https-works/ssl_handshake_rsa.jpg" alt="rsa handshake" /></p>
+
+<blockquote>
+  <p>Source: <a href="https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/">Keyless SSL: The Nitty Gritty Technical Details</a></p>
+</blockquote>
+
+<ol>
+  <li>[明文] 客户端发送随机数<code>client_random</code>和支持的加密方式列表</li>
+  <li>[明文] 服务器返回随机数<code>server_random </code>，选择的加密方式和服务器证书链</li>
+  <li>[RSA] 客户端验证服务器证书，使用证书中的公钥加密<code>premaster secret </code>发送给服务端</li>
+  <li>服务端使用私钥解密<code>premaster secret </code></li>
+  <li>两端分别通过<code>client_random</code>，<code>server_random </code>和<code>premaster secret </code>生成<code>master secret</code>，用于对称加密后续通信内容</li>
+</ol>
+
+<h2 id="digital-certificate">证书（Digital certificate）</h2>
+
+<p>那么什么是证书呢？</p>
+
+<p><img src="/assets/how-https-works/certificate.png" alt="certificate" /></p>
+
+<p><strong>证书中包含什么信息</strong></p>
+
+<ul>
+  <li>证书信息：过期时间和序列号</li>
+  <li>所有者信息：姓名等</li>
+  <li>所有者公钥</li>
+</ul>
+
+<p><strong>为什么服务端要发送证书给客户端</strong></p>
+
+<p>互联网有太多的服务需要使用证书来验证身份，以至于客户端（操作系统或浏览器等）无法内置所有证书，需要通过服务端将证书发送给客户端。</p>
+
+<p><strong>客户端为什么要验证接收到的证书</strong></p>
+
+<p>中间人攻击</p>
+
+<pre><code>客户端&lt;------------攻击者&lt;------------服务端
+        伪造证书            拦截请求
+</code></pre>
+
+<p><strong>客户端如何验证接收到的证书</strong></p>
+
+<p>为了回答这个问题，需要引入数字签名(Digital Signature)。</p>
+
+<pre><code>+---------------------+
+| A digital signature |
+|(not to be confused  |
+|with a digital       |
+|certificate)         |            +---------+              +--------+
+| is a mathematical   |----哈希---&gt;| 消息摘要  |---私钥加密---&gt;| 数字签名 |
+|technique used       |            +---------+              +--------+
+|to validate the      |
+|authenticity and     |
+|integrity of a       |
+|message, software    |
+|or digital document. |
++---------------------+
+
+</code></pre>
+
+<p>将一段文本通过哈希（hash）和私钥加密处理后生成数字签名。</p>
+
+<p>假设消息传递在Bob，Susan和Pat三人之间发生。Susan将消息连同数字签名一起发送给Bob，Bob接收到消息后，可以这样验证接收到的消息就是Susan发送的</p>
+
+<pre><code>+---------------------+
+| A digital signature |
+|(not to be confused  |
+|with a digital       |
+|certificate)         |            +---------+
+| is a mathematical   |----哈希---&gt;|  消息摘要 |
+|technique used       |            +---------+
+|to validate the      |                 |
+|authenticity and     |                 |
+|integrity of a       |                 |
+|message, software    |                 对
+|or digital document. |                 比
++---------------------+                 |
+                                        |
+                                        |
+          +--------+               +---------+
+          | 数字签名 |---公钥解密---&gt;|  消息摘要 |
+          +--------+               +---------+
+
+</code></pre>
+
+<p>当然，这个前提是Bob知道Susan的公钥。更重要的是，和消息本身一样，公钥不能在不安全的网络中直接发送给Bob。</p>
+
+<p>此时就引入了<a href="https://en.wikipedia.org/wiki/Certificate_authority">证书颁发机构</a>（Certificate Authority，简称CA），CA数量并不多，Bob客户端内置了所有受信任CA的证书。CA对Susan的公钥（和其他信息）数字签名后生成证书。</p>
+
+<p>Susan将证书发送给Bob后，Bob通过CA证书的公钥验证证书签名。</p>
+
+<p>Bob信任CA，CA信任Susan 使得 Bob信任Susan，<a href="https://en.wikipedia.org/wiki/Chain_of_trust">信任链</a>（Chain Of Trust）就是这样形成的。</p>
+
+<p>事实上，Bob客户端内置的是CA的根证书(Root Certificate)，HTTPS协议中服务器会发送证书链（Certificate Chain）给客户端。</p>
+
+<h2 id="tlshttpstoolsietforghtmlrfc5246"><a href="https://tools.ietf.org/html/rfc5246">TLS协议</a></h2>
+
+<p>TLS协议包括TLS Record Protocol和TLS Handshake Protocol。总览中的流程图仅涉及到TLS Handshake Protocol。</p>
+
+<h3 id="tls-record-protocol">TLS Record Protocol</h3>
+
+<p>在TLS协议中，有四种子协议运行于Record protocol之上</p>
+
+<ul>
+  <li>Handshake protocol</li>
+  <li>Alert protocol</li>
+  <li>Change cipher spec protocol</li>
+  <li>Application data protocol</li>
+</ul>
+
+<p>Record protocol起到了这样的作用</p>
+
+<ul>
+  <li>在发送端：将数据（Record）分段，压缩，增加<a href="https://en.wikipedia.org/wiki/Message_authentication_code">MAC</a>(Message Authentication Code)和加密</li>
+  <li>在接收端：将数据（Record）解密，验证MAC，解压并重组</li>
+</ul>
+
+<blockquote>
+  <p>值得一提的是，Record protocol提供了数据完整性和隐私性保证，但Record类型（type）和长度（length）是公开传输的</p>
+</blockquote>
+
+<p>Record Protocol有三个连接状态(Connection State)，连接状态定义了压缩，加密和MAC算法。所有的Record都是被当前状态（Current State）确定的算法处理的。</p>
+
+<p>TLS Handshake Protocol和Change Ciper Spec Protocol会导致Record Protocol状态切换。</p>
+
+<pre><code>empty state -------------------&gt; pending state ------------------&gt; current state
+             Handshake Protocol                Change Cipher Spec
+</code></pre>
+
+<p>初始当前状态（Current State）没有指定加密，压缩和MAC算法，因而在完成TLS Handshaking Protocols一系列动作之前，客户端和服务端的数据都是<strong>明文传输</strong>的；当TLS完成握手过程后，客户端和服务端确定了加密，压缩和MAC算法及其参数，数据（Record）会通过指定算法处理。</p>
+
+<blockquote>
+  <p>其中，Record首先被加密，然后添加MAC（message authentication code）以保证数据完整性。</p>
+</blockquote>
+
+<h3 id="tls-handshaking-protocols">TLS Handshaking Protocols</h3>
+
+<p>Handshakeing protocols包括Alert Protocol，Change Ciper Spec Protocol和Handshake protocol。本文不会详细介绍Alert Protocol和Change Ciper Spec Protocol。</p>
+
+<p>使用RSA算法的握手过程是这样的（已在总览中提到）</p>
+
+<p><img src="/assets/how-https-works/ssl_handshake_rsa.jpg" alt="rsa handshake" /></p>
+
+<blockquote>
+  <p>Source: <a href="https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/">Keyless SSL: The Nitty Gritty Technical Details</a></p>
+</blockquote>
+
+<p>客户端和服务端在握手hello消息中明文交换了<code>client_random</code>和<code>server_random </code>，使用RSA公钥加密传输<code>premaster secret </code>，最后通过<a href="#master-secret是如何计算的">算法</a>，客户端和服务端分别计算<code>master secret</code>。其中，不直接使用<code>premaster secret </code>的原因是：保证secret的随机性不受任意一方的影响。</p>
+
+<p>除了使用RSA算法在公共信道交换密钥，还可以通过Diffie–Hellman算法。Diffie–Hellman算法的原理是这样的</p>
+
+<p><img src="/assets/how-https-works/Diffie-Hellman_Key_Exchange.svg" alt="Diffie-Hellman_Key_Exchange" /></p>
+
+<blockquote>
+  <p>By Original schema: A.J. Han Vinck, University of Duisburg-Essen SVG version: Flugaal [Public domain], via Wikimedia Commons</p>
+</blockquote>
+
+<p>使用Diffie–Hellman算法交换<code>premaster secret </code>的流程</p>
+
+<p><img src="/assets/how-https-works/ssl_handshake_diffie_hellman.jpg" alt="diffie hellman handshake" /></p>
+
+<blockquote>
+  <p>Source: <a href="https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/">Keyless SSL: The Nitty Gritty Technical Details</a></p>
+</blockquote>
+
+<h3 id="section-2">小结</h3>
+
+<p>TLS Handshaking Protocols协商了TLS Record Protocol使用的算法和所需参数，并验证了服务端身份；TLS Record Protocol在协商后保证应用层数据的完整性和隐私性。</p>
+
+<p>TLS Handshaking Protocol的核心是在公开信道上传递<code>premaster secret</code>。</p>
+
+<h2 id="qa">Q&amp;A</h2>
+
+<h3 id="section-3">为什么传输内容不直接使用非对称加密？</h3>
+
+<p>性能</p>
+
+<h3 id="https">HTTPS能保证正常连接？</h3>
+
+<p>no</p>
+
+<blockquote>
+  <p>There are a number of ways in which a man-in-the-middle<br />
+   attacker can attempt to make two entities drop down to the least<br />
+   secure method they support.</p>
+</blockquote>
+
+<p>攻击者甚至可以直接丢弃双方的数据包</p>
+
+<h3 id="section-4">服务端如何验证客户端身份？</h3>
+
+<p>通过Client Certificate</p>
+
+<blockquote>
+  <p>This message conveys the client’s certificate chain to the server;<br />
+      the server will use it when verifying the CertificateVerify<br />
+      message (when the client authentication is based on signing) or<br />
+      calculating the <code>premaster secret </code> (for non-ephemeral Diffie-<br />
+      Hellman).  The certificate MUST be appropriate for the negotiated<br />
+      cipher suite’s key exchange algorithm, and any negotiated<br />
+      extensions.</p>
+</blockquote>
+
+<h3 id="alert-protocol">Alert protocol有什么作用？</h3>
+
+<p>Closure Alerts：防止Truncation Attack</p>
+
+<blockquote>
+  <p>In a truncation attack, an attacker inserts into a message a TCP code indicating the message has finished, thus preventing the recipient picking up the rest of the message.<br />
+To prevent this, SSL from version v3 onward has a closing handshake, so the recipient knows the message has not ended until this has been performed.</p>
+</blockquote>
+
+<p>Error Alerts：错误处理</p>
+
+<h3 id="master-secret">master secret是如何计算的</h3>
+
+<pre><code>  master_secret = PRF(pre_master_secret, "master secret",
+                      ClientHello.random + ServerHello.random)
+                      [0..47];
+</code></pre>
+
+<h3 id="mac">加密，压缩和MAC算法参数是如何计算的</h3>
+
+<p>Handshaking Protocols使得客户端和服务端交换了三个参数：<code>client_random</code>，<code>server_random </code>和master_secret，通过以下算法生成算法所需要的参数</p>
+
+<pre><code>To generate the key material, compute
+
+  key_block = PRF(SecurityParameters.master_secret,
+                  "key expansion",
+                  SecurityParameters.`server_random ` +
+                  SecurityParameters.`client_random`);
+
+until enough output has been generated.  Then, the key_block is
+partitioned as follows:
+
+  client_write_MAC_key[SecurityParameters.mac_key_length]
+  server_write_MAC_key[SecurityParameters.mac_key_length]
+  client_write_key[SecurityParameters.enc_key_length]
+  server_write_key[SecurityParameters.enc_key_length]
+  client_write_IV[SecurityParameters.fixed_iv_length]
+  server_write_IV[SecurityParameters.fixed_iv_length]
+</code></pre>
+
+<blockquote>
+  <p>The master secret is expanded into a sequence of secure bytes, which<br />
+   is then split to a client write MAC key, a server write MAC key, a<br />
+   client write encryption key, and a server write encryption key</p>
+</blockquote>
+
+<h3 id="diffie-hellmantls">使用Diffie-Hellman算法的TLS握手细节</h3>
+
+<p><img src="/assets/how-https-works/dh-detail.jpg" alt="dh-detail" /><br />
+&gt; Source: https://cipherstuff.wordpress.com/</p>
+
+<h2 id="section-5">拓展阅读</h2>
+
+<ul>
+  <li><a href="https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/">Keyless</a></li>
+  <li><a href="https://letsencrypt.org/">Let’s Encrypt</a></li>
+  <li>Session resume</li>
+  <li>证书Revoke</li>
+</ul>
+
+<h2 id="section-6">参考链接</h2>
+
+<ol>
+  <li>TLS1.2规范：<a href="https://tools.ietf.org/html/rfc5246">The Transport Layer Security (TLS) Protocol Version 1.2</a></li>
+  <li>PKI规范：<a href="http://tools.ietf.org/html/rfc5280">Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile</a></li>
+  <li>证书和数字签名：<a href="http://www.youdzone.com/signature.html">What is a Digital Signature?</a></li>
+  <li>TLS Handshake：<a href="https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/">Keyless SSL: The Nitty Gritty Technical Details</a></li>
+</ol>
+
+            </article>
+
+            <a href="https://github.com/CatTail/cattail.github.io/issues/new?title=HTTPS工作原理" style="display:block; text-align:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Layer_1" x="0px" y="0px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve" fill="#888" width="60" height="60">
+                    <polygon fill="none" stroke="#888" stroke-width="2" stroke-miterlimit="10" points="29,24 13,24 8,28 8,24 3,24 3,6 29,6 "/>
+                    <line fill="none" stroke="#888" stroke-width="2" stroke-miterlimit="10" x1="8" y1="13" x2="24" y2="13"/>
+                    <line fill="none" stroke="#888" stroke-width="2" stroke-miterlimit="10" x1="8" y1="17" x2="20" y2="17"/>
+                </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+  <div class="wrapper">
+    
+      <p class="cc">
+          <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">猫尾博客</span> 由 <a xmlns:cc="http://creativecommons.org/ns#" href="https://cattail.me" property="cc:attributionName" rel="cc:attributionURL">Chiyu Zhong</a> 创作，<br />
+          采用 <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/">知识共享 署名-非商业性使用-禁止演绎 4.0 国际 许可协议</a>进行许可。
+      </p>
+    
+    
+    <p>&copy; Copyright 2013 - 2016</p>
+  </div>
+</footer>
+
+
+    <link rel="stylesheet" href="/css/highlight/github-gist.css">
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </body>
+
+</html>
