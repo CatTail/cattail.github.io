@@ -21,6 +21,7 @@ HTTPS，也称作HTTP over TLS。[TLS的前身是SSL](https://en.wikipedia.org/
 下图描述了在TCP/IP协议栈中TLS(各子协议）和HTTP的关系
 
 ![tcp ip model](/assets/how-https-works/tcp-ip-model.png)
+
 > Credit: [Kaushal Kumar Panday](http://blogs.msdn.com/213737/ProfileUrlRedirect.ashx) From: [SSL Handshake and HTTPS Bindings on IIS](http://blogs.msdn.com/b/kaushal/archive/2013/08/03/ssl-handshake-and-https-bindings-on-iis.aspx)
 
 其中Handshake protocol，Change Ciper Spec protocol和Alert protocol组成了SSL Handshaking Protocols。
@@ -38,6 +39,7 @@ HTTPS和HTTP协议相比提供了
 使用RSA算法的SSL握手过程是这样的
 
 ![rsa handshake](/assets/how-https-works/ssl_handshake_rsa.jpg)
+
 > Source: [Keyless SSL: The Nitty Gritty Technical Details](https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/)
 
 1. [明文] 客户端发送随机数`client_random`和支持的加密方式列表
@@ -158,6 +160,7 @@ empty state -------------------> pending state ------------------> current state
 ```
 
 初始当前状态（Current State）没有指定加密，压缩和MAC算法，因而在完成TLS Handshaking Protocols一系列动作之前，客户端和服务端的数据都是**明文传输**的；当TLS完成握手过程后，客户端和服务端确定了加密，压缩和MAC算法及其参数，数据（Record）会通过指定算法处理。
+
 > 其中，Record首先被加密，然后添加MAC（message authentication code）以保证数据完整性。
 
 ### TLS Handshaking Protocols
@@ -167,6 +170,7 @@ Handshakeing protocols包括Alert Protocol，Change Ciper Spec Protocol和Handsh
 使用RSA算法的握手过程是这样的（已在总览中提到）
 
 ![rsa handshake](/assets/how-https-works/ssl_handshake_rsa.jpg)
+
 > Source: [Keyless SSL: The Nitty Gritty Technical Details](https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/)
 
 客户端和服务端在握手hello消息中明文交换了`client_random`和`server_random `，使用RSA公钥加密传输`premaster secret `，最后通过[算法](#master-secret是如何计算的)，客户端和服务端分别计算`master secret`。其中，不直接使用`premaster secret `的原因是：保证secret的随机性不受任意一方的影响。
@@ -174,11 +178,13 @@ Handshakeing protocols包括Alert Protocol，Change Ciper Spec Protocol和Handsh
 除了使用RSA算法在公共信道交换密钥，还可以通过Diffie–Hellman算法。Diffie–Hellman算法的原理是这样的
 
 ![Diffie-Hellman_Key_Exchange](/assets/how-https-works/Diffie-Hellman_Key_Exchange.svg)
+
 > By Original schema: A.J. Han Vinck, University of Duisburg-Essen SVG version: Flugaal [Public domain], via Wikimedia Commons
 
 使用Diffie–Hellman算法交换`premaster secret `的流程
 
 ![diffie hellman handshake](/assets/how-https-works/ssl_handshake_diffie_hellman.jpg)
+
 > Source: [Keyless SSL: The Nitty Gritty Technical Details](https://blog.cloudflare.com/keyless-ssl-the-nitty-gritty-technical-details/)
 
 ### 小结
