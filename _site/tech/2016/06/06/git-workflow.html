@@ -1,0 +1,450 @@
+
+
+
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+
+  <title>Git Workflow</title>
+  
+  
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="https://cattail.me/tech/2016/06/06/git-workflow.html">
+
+  <!-- Fonts -->
+  <link href='//fonts.lug.ustc.edu.cn/css?family=Merriweather:900,900italic,300,300italic' rel='stylesheet' type='text/css'>
+  <link href='//fonts.lug.ustc.edu.cn/css?family=Lato:900,300' rel='stylesheet' type='text/css'>
+
+  <script>
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-41494270-3']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 'stats.g.doubleclick.net/dc.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+</head>
+
+
+  <body>
+
+    <div class="site-wrap">
+      <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">猫尾博客</a>
+
+    <nav class="site-nav">
+        <a class="page-link" href="/lab">Lab</a>
+        <a class="page-link" href="/feed.xml">RSS</a>
+        <a class="page-link" href="/about">About</a>
+    </nav>
+
+  </div>
+
+</header>
+
+
+      <div class="body">
+        <div class="wrapper">
+          <div class="post yue">
+
+            <header class="post-header">
+              <h1 class="post-title">Git Workflow</h1>
+              <span class="post-meta">
+                Jun 6, 2016
+              </span><br />
+              <span class="post-meta small">
+                4 minute read
+              </span>
+            </header>
+
+            <article class="post-content">
+              <p>两年前编写的文章<a href="https://cattail.me/tech/2013/08/22/git-style.html">Git Style</a>是我对自己混乱的Commit Message和Branch使用，参考业界实践对如何使用git所做的口头约束。</p>
+
+<p>本文在git style基础上，更<em>深入描述基于git的工作流程</em>，并<em>介绍两个工具</em>commitizen和gitflow来帮助我们更好的使用git。</p>
+
+<h2 id="commit-message">Commit Message</h2>
+
+<p>在Git Style中已经介绍了提交信息（Commit Message）的格式，但是没有说明为什么要遵循这样的约定。事实上，这个格式参考了<a href="https://github.com/angular/angular.js/blob/f3377da6a748007c11fde090890ee58fae4cefa5/CONTRIBUTING.md#commit">AngularJS’s commit message convention</a>，而AngularJS制定这样的约定是基于三个目标</p>
+
+<ul>
+  <li>自动生成CHANGELOG.md</li>
+  <li>识别不重要的commit</li>
+  <li>为浏览Commit历史时提供更好的信息</li>
+</ul>
+
+<p>后面简称AngularJS’s commit message convention为conventional message。</p>
+
+<h3 id="section">格式</h3>
+
+<p>Conventional message格式是这样的</p>
+
+<pre><code>&lt;type&gt;(&lt;scope&gt;): &lt;subject&gt;
+&lt;BLANK LINE&gt;
+&lt;body&gt;
+&lt;BLANK LINE&gt;
+&lt;footer&gt;
+</code></pre>
+
+<p><code>subject</code>是对变更的简要描述。</p>
+
+<p><code>body</code>是更为详细的描述。</p>
+
+<p><code>type</code>则定义了此次变更的类型，只能使用下面几种类型</p>
+
+<ul>
+  <li>feat：增加新功能</li>
+  <li>fix：问题修复</li>
+  <li>docs：文档变更</li>
+  <li>style：代码风格变更（不影响功能）</li>
+  <li>refactor：既不是新功能也不是问题修复的代码变更</li>
+  <li>perf：改善性能</li>
+  <li>test：增加测试</li>
+  <li>chore：开发工具（构建，脚手架工具等）</li>
+</ul>
+
+<p><code>footer</code>可以包含Breaking Changes和Closes信息。</p>
+
+<h3 id="section-1">应用</h3>
+
+<p><a href="https://github.com/open-trail/node-trail-agent">node-trail-agent</a>项目遵循conventional message，这里以这个项目举例，演示其应用场景。</p>
+
+<p><strong>CHANGELOG</strong></p>
+
+<p>通过<code>git log</code>可以生成CHANGELOG.md中需要的版本间添加的功能。</p>
+
+<pre><code>$ git log v0.4.0..v1.1.2 --grep feat --pretty=format:%s
+
+feat: add "type" tag to distinguish client and server span
+feat: instrument via Module._load hook
+</code></pre>
+
+<p>也可以同时获取问题修复</p>
+
+<pre><code>$ git log v0.4.0..v1.1.2 --grep 'feat\|fix' --pretty=format:%s
+
+fix: wrapper function not returned
+feat: add "type" tag to distinguish client and server span
+feat: instrument via Module._load hook
+</code></pre>
+
+<p><strong> bisect</strong></p>
+
+<p>使用<code>git bisect</code>可以快速定位引入问题的Commit，通过<code>type</code>分类可以识别不会引入Bug的变更。</p>
+
+<pre><code>(master) $ git bisect start
+(master) $ git bisect bad
+(master) $ gco v0.1.0
+(7f04616) $ git bisect good
+
+Bisecting: 15 revisions left to test after this (roughly 4 steps)
+[433f58f26a53b519ab7fc52927895e67eb068c64] docs: how to use agent
+
+(433f58f) $ git bisect good
+
+Bisecting: 7 revisions left to test after this (roughly 3 steps)
+[02894fb497f41eecc7b21462d3b020687b3aaee2] docs(CHANGELOG): 1.1.0
+
+(02894fb) $ git bisect good
+
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[9d15ca2166075aa180cd38a3b4d3be22aa336575] chore(release): 1.1.1
+
+(9d15ca2) $ git bisect good
+
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[f024d7c0382c4ff8b0543cbd66c6fe05b199bfbc] fix: wrapper function not returned
+
+(f024d7c) $ npm test
+...
+</code></pre>
+
+<p>为docs或chore不会引入Bug，所以可以直接执行<code>git bisect good</code>。</p>
+
+<p>使用<code>git bisect skip</code>可以直接过滤掉这些Commit，</p>
+
+<pre><code>$ git bisect skip $(git rev-list --grep 'style\|docs\|chore' v0.1.0..HEAD)
+</code></pre>
+
+<h3 id="commitizen">Commitizen</h3>
+
+<p>命令行工具<a href="https://github.com/commitizen/cz-cli">commitizen</a>帮助开发者生成符合conventional message的提交信息。</p>
+
+<p>成功安装并初始化commitizen后，通过调用<code>git cz</code>来提交代码，</p>
+
+<pre><code>$ git cz
+
+Line 1 will be cropped at 100 characters. All other lines will be wrapped after 100 characters.
+
+? Select the type of change that you're committing: (Use arrow keys)
+❯ feat:     A new feature
+  fix:      A bug fix
+  docs:     Documentation only changes
+  style:    Changes that do not affect the meaning of the code
+            (white-space, formatting, missing semi-colons, etc)
+  refactor: A code change that neither fixes a bug or adds a feature
+  perf:     A code change that improves performance
+</code></pre>
+
+<p>提交后会按照约定组织提交信息，</p>
+
+<pre><code>commit f024d7c0382c4ff8b0543cbd66c6fe05b199bfbc
+Author: zhongchiyu &lt;zhongchiyu@gmail.com&gt;
+Date:   Mon May 30 14:49:17 2016 +0800
+
+    fix: wrapper function not returned
+</code></pre>
+
+<p>除此之外，commitizen还依据conventional message，创建起一个生态</p>
+
+<ul>
+  <li><a href="https://github.com/conventional-changelog/conventional-changelog-cli">conventional-changelog-cli</a>：通过提交信息生成CHANGELOG.md</li>
+  <li><a href="https://github.com/conventional-changelog/conventional-github-releaser">conventional-github-releaser</a>：通过提交信息生成github release中的变更描述</li>
+  <li><a href="https://github.com/conventional-changelog/conventional-recommended-bump">conventional-recommended-bump</a>：根据提交信息判断需要升级<a href="http://semver.org/">Semantic Versioning</a>哪一位版本号</li>
+  <li><a href="https://github.com/kentcdodds/validate-commit-msg">validate-commit-msg</a>：检查提交信息是否符合约定</li>
+</ul>
+
+<p>使用这些工具可以简化npm包的发布流程，</p>
+
+<pre><code>#! /bin/bash
+
+# https://gist.github.com/stevemao/280ef22ee861323993a0
+# npm install -g commitizen cz-conventional-changelog trash-cli conventional-recommended-bump conventional-changelog-cli conventional-commits-detector json
+trash node_modules &amp;&gt;/dev/null;
+git pull --rebase &amp;&amp;
+npm install &amp;&amp;
+npm test &amp;&amp;
+cp package.json _package.json &amp;&amp;
+preset=`conventional-commits-detector` &amp;&amp;
+echo $preset &amp;&amp;
+bump=`conventional-recommended-bump -p angular` &amp;&amp;
+echo ${1:-$bump} &amp;&amp;
+npm --no-git-tag-version version ${1:-$bump} &amp;&gt;/dev/null &amp;&amp;
+conventional-changelog -i History.md -s -p ${2:-$preset} &amp;&amp;
+git add History.md &amp;&amp;
+version=`cat package.json | json version` &amp;&amp;
+git commit -m"docs(CHANGELOG): $version" &amp;&amp;
+mv -f _package.json package.json &amp;&amp;
+npm version ${1:-$bump} -m "chore(release): %s" &amp;&amp;
+git push --follow-tags &amp;&amp;
+npm publish
+</code></pre>
+
+<p>运行上述脚本会更新CHANGELOG.md、升级版本号并发布新版本到npm，所有这些操作都基于提交信息自动处理。</p>
+
+<h2 id="branching-model">Branching Model</h2>
+
+<p>虽然git仓库分布式存储于每个用户的设备上，但通常会有一个”中心“仓库（<code>origin</code>）存储生产环境代码。</p>
+
+<p><img src="/assets/git-workflow/centralized.png" alt="centralized" /><br />
+&gt; Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA</p>
+
+<p>在多人协作时，利用git轻量的分支，可以减少代码冲突（包括文本冲突和功能冲突）。<a href="http://nvie.com/about/">Vincent Driessen</a>的branching model描述了git分支工作流程，</p>
+
+<p><img src="/assets/git-workflow/workflow.png" alt="workflow" /><br />
+&gt; Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA</p>
+
+<h3 id="workflow">Workflow</h3>
+
+<p>在整个开发流程中，始终存在master和develop分支，其中master分支代码和生产环境代码保持一致，develop分支除生产环境代码外还包含未发布的新功能代码。</p>
+
+<p><strong>功能开发</strong></p>
+
+<ol>
+  <li>从develop创建一个新分支（feature/*）</li>
+  <li>功能开发</li>
+  <li>测试</li>
+  <li><em>Review</em></li>
+  <li>Merge回develop分支</li>
+</ol>
+
+<p><strong>代码发布</strong></p>
+
+<p>需要发布新功能带生产环境时</p>
+
+<ol>
+  <li>从develop创建新分支（release/*）</li>
+  <li>发布新分支代码到staging环境</li>
+  <li>测试并修复问题</li>
+  <li><em>Review</em></li>
+  <li>分别merge回develop和master分支</li>
+  <li>发布master代码到生产环境</li>
+</ol>
+
+<p><strong>问题修复</strong></p>
+
+<p>当生产环境代码出现问题需要立刻修复时</p>
+
+<ol>
+  <li>从master创建新分支（hotfix/*）</li>
+  <li>修复问题并测试</li>
+  <li><em>Review</em></li>
+  <li>分别merge会develop和master分支</li>
+  <li>发布master代码到生产环境</li>
+</ol>
+
+<h3 id="gitflow">gitflow</h3>
+
+<p>Vincent Driessen的branching model将开发流程和git分支很好的结合起来，但是直接使用需要在分之间来回切换。<a href="https://github.com/nvie/gitflow">gitflow</a>可以帮我们处理这些琐碎的事情。</p>
+
+<p>安装并在代码仓库初始化gitflow后，就可以使用它完成分支工作流程，</p>
+
+<pre><code>$ git flow init
+
+No branches exist yet. Base branches must be created now.
+Branch name for production releases: [master]
+Branch name for "next release" development: [develop]
+
+How to name your supporting branch prefixes?
+Feature branches? [feature/]
+Release branches? [release/]
+Hotfix branches? [hotfix/]
+Support branches? [support/]
+Version tag prefix? []
+</code></pre>
+
+<p><strong>功能开发</strong></p>
+
+<p>开始开发时</p>
+
+<pre><code>(develop) $ git flow feature start demo
+
+Switched to a new branch 'feature/demo'
+
+Summary of actions:
+- A new branch 'feature/demo' was created, based on 'develop'
+- You are now on branch 'feature/demo'
+</code></pre>
+
+<p>完成开发后</p>
+
+<pre><code>(feature/demo) $ git flow feature finish demo
+
+Switched to branch 'develop'
+Already up-to-date.
+Deleted branch feature/demo (was 48fbada).
+
+Summary of actions:
+- The feature branch 'feature/demo' was merged into 'develop'
+- Feature branch 'feature/demo' has been removed
+- You are now on branch 'develop'
+</code></pre>
+
+<p><strong>代码发布</strong></p>
+
+<p>发布代码前</p>
+
+<pre><code>(develop) $ git flow release start demo
+
+Switched to a new branch 'release/demo'
+
+Summary of actions:
+- A new branch 'release/demo' was created, based on 'develop'
+- You are now on branch 'release/demo'
+</code></pre>
+
+<p>测试完成准备上线时</p>
+
+<pre><code>(release/demo) $ git flow release finish demo
+
+Switched to branch 'master'
+Deleted branch release/demo (was 48fbada).
+
+Summary of actions:
+- Latest objects have been fetched from 'origin'
+- Release branch has been merged into 'master'
+- The release was tagged 'demo'
+- Release branch has been back-merged into 'develop'
+- Release branch 'release/demo' has been deleted
+</code></pre>
+
+<p>发布master代码到线上环境</p>
+
+<p><strong>问题修复</strong></p>
+
+<p>发现线上故障时，</p>
+
+<pre><code>(master) $ git flow hotfix start demo-hotfix
+
+Switched to a new branch 'hotfix/demo-hotfix'
+
+Summary of actions:
+- A new branch 'hotfix/demo-hotfix' was created, based on 'master'
+- You are now on branch 'hotfix/demo-hotfix'
+</code></pre>
+
+<p>修复问题后</p>
+
+<pre><code>(hotfix/demo-hotfix) $ git flow hotfix finish demo-hotfix
+
+Deleted branch hotfix/demo-hotfix (was 48fbada).
+
+Summary of actions:
+- Latest objects have been fetched from 'origin'
+- Hotfix branch has been merged into 'master'
+- The hotfix was tagged 'demo-hotfix'
+- Hotfix branch has been back-merged into 'develop'
+- Hotfix branch 'hotfix/demo-hotfix' has been deleted
+</code></pre>
+
+<h3 id="section-2">相关链接</h3>
+
+<ul>
+  <li><a href="https://github.com/commitizen/cz-cli">commitizen</a></li>
+  <li><a href="https://github.com/nvie/gitflow">gitflow</a></li>
+  <li><a href="https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit">AngularJS Git Commit Message Conventions</a></li>
+  <li><a href="https://cattail.me/tech/2013/08/22/git-style.html">Git Style</a></li>
+  <li><a href="https://github.com/open-trail/node-trail-agent">node-trail-agent</a></li>
+  <li><a href="http://nvie.com/posts/a-successful-git-branching-model/">A successful Git branching model</a></li>
+  <li><a href="http://jeffkreeftmeijer.com/2010/why-arent-you-using-git-flow/">Using git-flow to automate your git branching workflow</a></li>
+</ul>
+
+            </article>
+
+            <a href="https://github.com/CatTail/cattail.github.io/issues/new?title=Git Workflow" style="display:block; text-align:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Layer_1" x="0px" y="0px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve" fill="#888" width="60" height="60">
+                    <polygon fill="none" stroke="#888" stroke-width="2" stroke-miterlimit="10" points="29,24 13,24 8,28 8,24 3,24 3,6 29,6 "/>
+                    <line fill="none" stroke="#888" stroke-width="2" stroke-miterlimit="10" x1="8" y1="13" x2="24" y2="13"/>
+                    <line fill="none" stroke="#888" stroke-width="2" stroke-miterlimit="10" x1="8" y1="17" x2="20" y2="17"/>
+                </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+  <div class="wrapper">
+    
+      <p class="cc">
+          <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">猫尾博客</span> 由 <a xmlns:cc="http://creativecommons.org/ns#" href="https://cattail.me" property="cc:attributionName" rel="cc:attributionURL">Chiyu Zhong</a> 创作，<br />
+          采用 <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/">知识共享 署名-非商业性使用-禁止演绎 4.0 国际 许可协议</a>进行许可。
+      </p>
+    
+    
+    <p>&copy; Copyright 2013 - 2016</p>
+    <p>本站由 <a href="https://upyun.com" target="_blank"><img src="/assets/upyun_logo_90x45.png" alt="upyun" style="width: 45px; vertical-align: bottom;"></a> 提供 CDN 存储服务</p>
+    
+  </div>
+
+  <script async src="//genius.codes"></script>
+</footer>
+
+
+    <link rel="stylesheet" href="/css/highlight/github-gist.css">
+    <script src="/js/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </body>
+
+</html>
