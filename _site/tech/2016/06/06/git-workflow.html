@@ -13,6 +13,8 @@
   <title>Git Workflow</title>
   
   
+  <meta name="description" content="对Git提交记录和分支模型的思考总结">
+  
 
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="https://cattail.me/tech/2016/06/06/git-workflow.html">
@@ -70,9 +72,9 @@
             </header>
 
             <article class="post-content">
-              <p>两年前编写的文章<a href="https://cattail.me/tech/2013/08/22/git-style.html">Git Style</a>是我对自己混乱的Commit Message和Branch使用，参考业界实践对如何使用git所做的口头约束。</p>
+              <p>两年前编写的文章<a href="https://cattail.me/tech/2013/08/22/git-style.html">Git Style</a>是我对自己混乱的Commit Message和Branch使用，参考业界实践对如何使用Git所做的口头约束。</p>
 
-<p>本文在git style基础上，更<em>深入描述基于git的工作流程</em>，并<em>介绍两个工具</em>commitizen和gitflow来帮助我们更好的使用git。</p>
+<p>本文在Git Style基础上，更<em>深入描述基于Git的工作流程</em>，并<em>介绍两个工具</em>commitizen和gitflow来帮助我们更好的使用Git。</p>
 
 <h2 id="commit-message">Commit Message</h2>
 
@@ -245,12 +247,12 @@ npm publish
 
 <h2 id="branching-model">Branching Model</h2>
 
-<p>虽然git仓库分布式存储于每个用户的设备上，但通常会有一个”中心“仓库（<code>origin</code>）存储生产环境代码。</p>
+<p>虽然Git仓库分布式存储于每个用户的设备上，但通常会有一个”中心“仓库（<code>origin</code>）存储生产环境代码。</p>
 
 <p><img src="/assets/git-workflow/centralized.png" alt="centralized" /><br />
 &gt; Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA</p>
 
-<p>在多人协作时，利用git轻量的分支，可以减少代码冲突（包括文本冲突和功能冲突）。<a href="http://nvie.com/about/">Vincent Driessen</a>的branching model描述了git分支工作流程，</p>
+<p>在多人协作时，利用Git轻量的分支，可以减少代码冲突（包括文本冲突和功能冲突）。<a href="http://nvie.com/about/">Vincent Driessen</a>的branching model描述了Git分支工作流程，</p>
 
 <p><img src="/assets/git-workflow/workflow.png" alt="workflow" /><br />
 &gt; Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA</p>
@@ -296,7 +298,7 @@ npm publish
 
 <h3 id="gitflow">gitflow</h3>
 
-<p>Vincent Driessen的branching model将开发流程和git分支很好的结合起来，但是直接使用需要在分之间来回切换。<a href="https://github.com/nvie/gitflow">gitflow</a>可以帮我们处理这些琐碎的事情。</p>
+<p>Vincent Driessen的branching model将开发流程和Git分支很好的结合起来，但是直接使用需要在分之间来回切换。<a href="https://github.com/nvie/gitflow">gitflow</a>可以帮我们处理这些琐碎的事情。</p>
 
 <p>安装并在代码仓库初始化gitflow后，就可以使用它完成分支工作流程，</p>
 
