@@ -6,9 +6,360 @@
 </description>
     <link>https://cattail.me/</link>
     <atom:link href="https://cattail.me/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sun, 24 Apr 2016 20:00:50 +0800</pubDate>
-    <lastBuildDate>Sun, 24 Apr 2016 20:00:50 +0800</lastBuildDate>
+    <pubDate>Wed, 08 Jun 2016 16:28:56 +0800</pubDate>
+    <lastBuildDate>Wed, 08 Jun 2016 16:28:56 +0800</lastBuildDate>
     <generator>Jekyll v2.4.0</generator>
+    
+      <item>
+        <title>Git Workflow</title>
+        <description>&lt;p&gt;两年前编写的文章&lt;a href=&quot;https://cattail.me/tech/2013/08/22/git-style.html&quot;&gt;Git Style&lt;/a&gt;是我对自己混乱的Commit Message和Branch使用，参考业界实践对如何使用git所做的口头约束。&lt;/p&gt;
+
+&lt;p&gt;本文在git style基础上，更&lt;em&gt;深入描述基于git的工作流程&lt;/em&gt;，并&lt;em&gt;介绍两个工具&lt;/em&gt;commitizen和gitflow来帮助我们更好的使用git。&lt;/p&gt;
+
+&lt;h2 id=&quot;commit-message&quot;&gt;Commit Message&lt;/h2&gt;
+
+&lt;p&gt;在Git Style中已经介绍了提交信息（Commit Message）的格式，但是没有说明为什么要遵循这样的约定。事实上，这个格式参考了&lt;a href=&quot;https://github.com/angular/angular.js/blob/f3377da6a748007c11fde090890ee58fae4cefa5/CONTRIBUTING.md#commit&quot;&gt;AngularJS’s commit message convention&lt;/a&gt;，而AngularJS制定这样的约定是基于三个目标&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;自动生成CHANGELOG.md&lt;/li&gt;
+  &lt;li&gt;识别不重要的commit&lt;/li&gt;
+  &lt;li&gt;为浏览Commit历史时提供更好的信息&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;后面简称AngularJS’s commit message convention为conventional message。&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;格式&lt;/h3&gt;
+
+&lt;p&gt;Conventional message格式是这样的&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;lt;type&amp;gt;(&amp;lt;scope&amp;gt;): &amp;lt;subject&amp;gt;
+&amp;lt;BLANK LINE&amp;gt;
+&amp;lt;body&amp;gt;
+&amp;lt;BLANK LINE&amp;gt;
+&amp;lt;footer&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;subject&lt;/code&gt;是对变更的简要描述。&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;body&lt;/code&gt;是更为详细的描述。&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;type&lt;/code&gt;则定义了此次变更的类型，只能使用下面几种类型&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;feat：增加新功能&lt;/li&gt;
+  &lt;li&gt;fix：问题修复&lt;/li&gt;
+  &lt;li&gt;docs：文档变更&lt;/li&gt;
+  &lt;li&gt;style：代码风格变更（不影响功能）&lt;/li&gt;
+  &lt;li&gt;refactor：既不是新功能也不是问题修复的代码变更&lt;/li&gt;
+  &lt;li&gt;perf：改善性能&lt;/li&gt;
+  &lt;li&gt;test：增加测试&lt;/li&gt;
+  &lt;li&gt;chore：开发工具（构建，脚手架工具等）&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;code&gt;footer&lt;/code&gt;可以包含Breaking Changes和Closes信息。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;应用&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/open-trail/node-trail-agent&quot;&gt;node-trail-agent&lt;/a&gt;项目遵循conventional message，这里以这个项目举例，演示其应用场景。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;CHANGELOG&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;通过&lt;code&gt;git log&lt;/code&gt;可以生成CHANGELOG.md中需要的版本间添加的功能。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ git log v0.4.0..v1.1.2 --grep feat --pretty=format:%s
+
+feat: add &quot;type&quot; tag to distinguish client and server span
+feat: instrument via Module._load hook
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;也可以同时获取问题修复&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ git log v0.4.0..v1.1.2 --grep &#39;feat\|fix&#39; --pretty=format:%s
+
+fix: wrapper function not returned
+feat: add &quot;type&quot; tag to distinguish client and server span
+feat: instrument via Module._load hook
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt; bisect&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;使用&lt;code&gt;git bisect&lt;/code&gt;可以快速定位引入问题的Commit，通过&lt;code&gt;type&lt;/code&gt;分类可以识别不会引入Bug的变更。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(master) $ git bisect start
+(master) $ git bisect bad
+(master) $ gco v0.1.0
+(7f04616) $ git bisect good
+
+Bisecting: 15 revisions left to test after this (roughly 4 steps)
+[433f58f26a53b519ab7fc52927895e67eb068c64] docs: how to use agent
+
+(433f58f) $ git bisect good
+
+Bisecting: 7 revisions left to test after this (roughly 3 steps)
+[02894fb497f41eecc7b21462d3b020687b3aaee2] docs(CHANGELOG): 1.1.0
+
+(02894fb) $ git bisect good
+
+Bisecting: 3 revisions left to test after this (roughly 2 steps)
+[9d15ca2166075aa180cd38a3b4d3be22aa336575] chore(release): 1.1.1
+
+(9d15ca2) $ git bisect good
+
+Bisecting: 1 revision left to test after this (roughly 1 step)
+[f024d7c0382c4ff8b0543cbd66c6fe05b199bfbc] fix: wrapper function not returned
+
+(f024d7c) $ npm test
+...
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;为docs或chore不会引入Bug，所以可以直接执行&lt;code&gt;git bisect good&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;使用&lt;code&gt;git bisect skip&lt;/code&gt;可以直接过滤掉这些Commit，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ git bisect skip $(git rev-list --grep &#39;style\|docs\|chore&#39; v0.1.0..HEAD)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;commitizen&quot;&gt;Commitizen&lt;/h3&gt;
+
+&lt;p&gt;命令行工具&lt;a href=&quot;https://github.com/commitizen/cz-cli&quot;&gt;commitizen&lt;/a&gt;帮助开发者生成符合conventional message的提交信息。&lt;/p&gt;
+
+&lt;p&gt;成功安装并初始化commitizen后，通过调用&lt;code&gt;git cz&lt;/code&gt;来提交代码，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ git cz
+
+Line 1 will be cropped at 100 characters. All other lines will be wrapped after 100 characters.
+
+? Select the type of change that you&#39;re committing: (Use arrow keys)
+❯ feat:     A new feature
+  fix:      A bug fix
+  docs:     Documentation only changes
+  style:    Changes that do not affect the meaning of the code
+            (white-space, formatting, missing semi-colons, etc)
+  refactor: A code change that neither fixes a bug or adds a feature
+  perf:     A code change that improves performance
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;提交后会按照约定组织提交信息，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;commit f024d7c0382c4ff8b0543cbd66c6fe05b199bfbc
+Author: zhongchiyu &amp;lt;zhongchiyu@gmail.com&amp;gt;
+Date:   Mon May 30 14:49:17 2016 +0800
+
+    fix: wrapper function not returned
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;除此之外，commitizen还依据conventional message，创建起一个生态&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/conventional-changelog/conventional-changelog-cli&quot;&gt;conventional-changelog-cli&lt;/a&gt;：通过提交信息生成CHANGELOG.md&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/conventional-changelog/conventional-github-releaser&quot;&gt;conventional-github-releaser&lt;/a&gt;：通过提交信息生成github release中的变更描述&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/conventional-changelog/conventional-recommended-bump&quot;&gt;conventional-recommended-bump&lt;/a&gt;：根据提交信息判断需要升级&lt;a href=&quot;http://semver.org/&quot;&gt;Semantic Versioning&lt;/a&gt;哪一位版本号&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/kentcdodds/validate-commit-msg&quot;&gt;validate-commit-msg&lt;/a&gt;：检查提交信息是否符合约定&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;使用这些工具可以简化npm包的发布流程，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#! /bin/bash
+
+# https://gist.github.com/stevemao/280ef22ee861323993a0
+# npm install -g commitizen cz-conventional-changelog trash-cli conventional-recommended-bump conventional-changelog-cli conventional-commits-detector json
+trash node_modules &amp;amp;&amp;gt;/dev/null;
+git pull --rebase &amp;amp;&amp;amp;
+npm install &amp;amp;&amp;amp;
+npm test &amp;amp;&amp;amp;
+cp package.json _package.json &amp;amp;&amp;amp;
+preset=`conventional-commits-detector` &amp;amp;&amp;amp;
+echo $preset &amp;amp;&amp;amp;
+bump=`conventional-recommended-bump -p angular` &amp;amp;&amp;amp;
+echo ${1:-$bump} &amp;amp;&amp;amp;
+npm --no-git-tag-version version ${1:-$bump} &amp;amp;&amp;gt;/dev/null &amp;amp;&amp;amp;
+conventional-changelog -i History.md -s -p ${2:-$preset} &amp;amp;&amp;amp;
+git add History.md &amp;amp;&amp;amp;
+version=`cat package.json | json version` &amp;amp;&amp;amp;
+git commit -m&quot;docs(CHANGELOG): $version&quot; &amp;amp;&amp;amp;
+mv -f _package.json package.json &amp;amp;&amp;amp;
+npm version ${1:-$bump} -m &quot;chore(release): %s&quot; &amp;amp;&amp;amp;
+git push --follow-tags &amp;amp;&amp;amp;
+npm publish
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;运行上述脚本会更新CHANGELOG.md、升级版本号并发布新版本到npm，所有这些操作都基于提交信息自动处理。&lt;/p&gt;
+
+&lt;h2 id=&quot;branching-model&quot;&gt;Branching Model&lt;/h2&gt;
+
+&lt;p&gt;虽然git仓库分布式存储于每个用户的设备上，但通常会有一个”中心“仓库（&lt;code&gt;origin&lt;/code&gt;）存储生产环境代码。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/git-workflow/centralized.png&quot; alt=&quot;centralized&quot; /&gt;&lt;br /&gt;
+&amp;gt; Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA&lt;/p&gt;
+
+&lt;p&gt;在多人协作时，利用git轻量的分支，可以减少代码冲突（包括文本冲突和功能冲突）。&lt;a href=&quot;http://nvie.com/about/&quot;&gt;Vincent Driessen&lt;/a&gt;的branching model描述了git分支工作流程，&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/git-workflow/workflow.png&quot; alt=&quot;workflow&quot; /&gt;&lt;br /&gt;
+&amp;gt; Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA&lt;/p&gt;
+
+&lt;h3 id=&quot;workflow&quot;&gt;Workflow&lt;/h3&gt;
+
+&lt;p&gt;在整个开发流程中，始终存在master和develop分支，其中master分支代码和生产环境代码保持一致，develop分支除生产环境代码外还包含未发布的新功能代码。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;功能开发&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;从develop创建一个新分支（feature/*）&lt;/li&gt;
+  &lt;li&gt;功能开发&lt;/li&gt;
+  &lt;li&gt;测试&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;Review&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;Merge回develop分支&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;strong&gt;代码发布&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;需要发布新功能带生产环境时&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;从develop创建新分支（release/*）&lt;/li&gt;
+  &lt;li&gt;发布新分支代码到staging环境&lt;/li&gt;
+  &lt;li&gt;测试并修复问题&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;Review&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;分别merge回develop和master分支&lt;/li&gt;
+  &lt;li&gt;发布master代码到生产环境&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;strong&gt;问题修复&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;当生产环境代码出现问题需要立刻修复时&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;从master创建新分支（hotfix/*）&lt;/li&gt;
+  &lt;li&gt;修复问题并测试&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;Review&lt;/em&gt;&lt;/li&gt;
+  &lt;li&gt;分别merge会develop和master分支&lt;/li&gt;
+  &lt;li&gt;发布master代码到生产环境&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;gitflow&quot;&gt;gitflow&lt;/h3&gt;
+
+&lt;p&gt;Vincent Driessen的branching model将开发流程和git分支很好的结合起来，但是直接使用需要在分之间来回切换。&lt;a href=&quot;https://github.com/nvie/gitflow&quot;&gt;gitflow&lt;/a&gt;可以帮我们处理这些琐碎的事情。&lt;/p&gt;
+
+&lt;p&gt;安装并在代码仓库初始化gitflow后，就可以使用它完成分支工作流程，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ git flow init
+
+No branches exist yet. Base branches must be created now.
+Branch name for production releases: [master]
+Branch name for &quot;next release&quot; development: [develop]
+
+How to name your supporting branch prefixes?
+Feature branches? [feature/]
+Release branches? [release/]
+Hotfix branches? [hotfix/]
+Support branches? [support/]
+Version tag prefix? []
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;功能开发&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;开始开发时&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(develop) $ git flow feature start demo
+
+Switched to a new branch &#39;feature/demo&#39;
+
+Summary of actions:
+- A new branch &#39;feature/demo&#39; was created, based on &#39;develop&#39;
+- You are now on branch &#39;feature/demo&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;完成开发后&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(feature/demo) $ git flow feature finish demo
+
+Switched to branch &#39;develop&#39;
+Already up-to-date.
+Deleted branch feature/demo (was 48fbada).
+
+Summary of actions:
+- The feature branch &#39;feature/demo&#39; was merged into &#39;develop&#39;
+- Feature branch &#39;feature/demo&#39; has been removed
+- You are now on branch &#39;develop&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;代码发布&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;发布代码前&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(develop) $ git flow release start demo
+
+Switched to a new branch &#39;release/demo&#39;
+
+Summary of actions:
+- A new branch &#39;release/demo&#39; was created, based on &#39;develop&#39;
+- You are now on branch &#39;release/demo&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;测试完成准备上线时&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(release/demo) $ git flow release finish demo
+
+Switched to branch &#39;master&#39;
+Deleted branch release/demo (was 48fbada).
+
+Summary of actions:
+- Latest objects have been fetched from &#39;origin&#39;
+- Release branch has been merged into &#39;master&#39;
+- The release was tagged &#39;demo&#39;
+- Release branch has been back-merged into &#39;develop&#39;
+- Release branch &#39;release/demo&#39; has been deleted
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;发布master代码到线上环境&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;问题修复&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;发现线上故障时，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(master) $ git flow hotfix start demo-hotfix
+
+Switched to a new branch &#39;hotfix/demo-hotfix&#39;
+
+Summary of actions:
+- A new branch &#39;hotfix/demo-hotfix&#39; was created, based on &#39;master&#39;
+- You are now on branch &#39;hotfix/demo-hotfix&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;修复问题后&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(hotfix/demo-hotfix) $ git flow hotfix finish demo-hotfix
+
+Deleted branch hotfix/demo-hotfix (was 48fbada).
+
+Summary of actions:
+- Latest objects have been fetched from &#39;origin&#39;
+- Hotfix branch has been merged into &#39;master&#39;
+- The hotfix was tagged &#39;demo-hotfix&#39;
+- Hotfix branch has been back-merged into &#39;develop&#39;
+- Hotfix branch &#39;hotfix/demo-hotfix&#39; has been deleted
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;相关链接&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/commitizen/cz-cli&quot;&gt;commitizen&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/nvie/gitflow&quot;&gt;gitflow&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit&quot;&gt;AngularJS Git Commit Message Conventions&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://cattail.me/tech/2013/08/22/git-style.html&quot;&gt;Git Style&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/open-trail/node-trail-agent&quot;&gt;node-trail-agent&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://nvie.com/posts/a-successful-git-branching-model/&quot;&gt;A successful Git branching model&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://jeffkreeftmeijer.com/2010/why-arent-you-using-git-flow/&quot;&gt;Using git-flow to automate your git branching workflow&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        <pubDate>Mon, 06 Jun 2016 16:20:00 +0800</pubDate>
+        <link>https://cattail.me/tech/2016/06/06/git-workflow.html</link>
+        <guid isPermaLink="true">https://cattail.me/tech/2016/06/06/git-workflow.html</guid>
+        
+        
+        <category>tech</category>
+        
+      </item>
     
       <item>
         <title>浅谈基准测试</title>
@@ -1584,19 +1935,6 @@ struct epoll_event {
         
         
         <category>slide</category>
-        
-      </item>
-    
-      <item>
-        <title>对APP应用结构的思考</title>
-        <description>
-</description>
-        <pubDate>Sun, 20 Apr 2014 00:00:00 +0800</pubDate>
-        <link>https://cattail.me/tech/2014/04/20/app-structure.html</link>
-        <guid isPermaLink="true">https://cattail.me/tech/2014/04/20/app-structure.html</guid>
-        
-        
-        <category>tech</category>
         
       </item>
     
