@@ -269,6 +269,7 @@ partitioned as follows:
 ### 使用Diffie-Hellman算法的TLS握手细节
 
 ![dh-detail](/assets/how-https-works/dh-detail.jpg)
+
 > Source: https://cipherstuff.wordpress.com/
 
 ## 拓展阅读

@@ -1,18 +1,16 @@
 ---
 layout: post
-title: Git Workflow
-description: 对Git提交记录和分支模型的思考总结
+title: Git提交记录和分支模型
+description: 总结Git提交记录格式和分支模型，并介绍工具来规范简化相关工作
 date: 2016-06-06 16:20
 categories: tech
 ---
 
-两年前编写的文章[Git Style](https://cattail.me/tech/2013/08/22/git-style.html)是我对自己混乱的Commit Message和Branch使用，参考业界实践对如何使用Git所做的口头约束。
-
-本文在Git Style基础上，更*深入描述基于Git的工作流程*，并*介绍两个工具*commitizen和gitflow来帮助我们更好的使用Git。
+两年前编写的文章[Git Style](https://cattail.me/tech/2013/08/21/git-style.html)，是参考业界实践对Git提交记录格式和分支模型所做的总结。**本文在Git Style基础上，再次描述提交记录的格式和分支模型，并介绍两个工具commitizen和gitflow，分别处理维护提交记录格式和分支切换的工作**。
 
 ## Commit Message
 
-在Git Style中已经介绍了提交信息（Commit Message）的格式，但是没有说明为什么要遵循这样的约定。事实上，这个格式参考了[AngularJS's commit message convention](https://github.com/angular/angular.js/blob/f3377da6a748007c11fde090890ee58fae4cefa5/CONTRIBUTING.md#commit)，而AngularJS制定这样的约定是基于三个目标
+在Git Style中已经介绍了提交记录（Commit Message）的格式，但是没有说明为什么要遵循这样的约定。事实上，这个格式参考了[AngularJS's commit message convention](https://github.com/angular/angular.js/blob/f3377da6a748007c11fde090890ee58fae4cefa5/CONTRIBUTING.md#commit)，而AngularJS制定这样的约定是出于几个目的
 
 * 自动生成CHANGELOG.md
 * 识别不重要的commit
@@ -22,7 +20,7 @@ categories: tech
 
 ### 格式
 
-Conventional message格式是这样的
+**Conventional message格式**是这样的
 
 	<type>(<scope>): <subject>
 	<BLANK LINE>
@@ -53,24 +51,24 @@ Conventional message格式是这样的
 
 **CHANGELOG**
 
-通过`git log`可以生成CHANGELOG.md中需要的版本间添加的功能。
+通过`git log`可以生成CHANGELOG.md中版本间新增功能，
 
 	$ git log v0.4.0..v1.1.2 --grep feat --pretty=format:%s
-	
+
 	feat: add "type" tag to distinguish client and server span
 	feat: instrument via Module._load hook
 
-也可以同时获取问题修复
+也可以同时获取修复的问题，
 
 	$ git log v0.4.0..v1.1.2 --grep 'feat\|fix' --pretty=format:%s
-	
+
 	fix: wrapper function not returned
 	feat: add "type" tag to distinguish client and server span
 	feat: instrument via Module._load hook
 
-** bisect**
+**定位错误**
 
-使用`git bisect`可以快速定位引入问题的Commit，通过`type`分类可以识别不会引入Bug的变更。
+使用`git bisect`可以定位引入问题的提交，通过`type`可以快速辨别不会引入bug的提交，
 
 	(master) $ git bisect start
 	(master) $ git bisect bad
@@ -98,22 +96,22 @@ Conventional message格式是这样的
 	(f024d7c) $ npm test
 	...
 
-为docs或chore不会引入Bug，所以可以直接执行`git bisect good`。
+因为docs或chore不会引入bug，所以可以直接执行`git bisect good`。
 
-使用`git bisect skip`可以直接过滤掉这些Commit，
+使用`git bisect skip`可以直接过滤掉这些提交，
 
 	$ git bisect skip $(git rev-list --grep 'style\|docs\|chore' v0.1.0..HEAD)
 
 ### Commitizen
 
-命令行工具[commitizen](https://github.com/commitizen/cz-cli)帮助开发者生成符合conventional message的提交信息。
+命令行工具[commitizen](https://github.com/commitizen/cz-cli)帮助开发者生成符合conventional message的提交记录。
 
 成功安装并初始化commitizen后，通过调用`git cz`来提交代码，
 
 	$ git cz
-	
+
 	Line 1 will be cropped at 100 characters. All other lines will be wrapped after 100 characters.
-	
+
 	? Select the type of change that you're committing: (Use arrow keys)
 	❯ feat:     A new feature
 	  fix:      A bug fix
@@ -123,7 +121,7 @@ Conventional message格式是这样的
 	  refactor: A code change that neither fixes a bug or adds a feature
 	  perf:     A code change that improves performance
 
-提交后会按照约定组织提交信息，
+提交后会按照convertional message格式化提交记录，
 
 	commit f024d7c0382c4ff8b0543cbd66c6fe05b199bfbc
 	Author: zhongchiyu <zhongchiyu@gmail.com>
@@ -133,15 +131,15 @@ Conventional message格式是这样的
 
 除此之外，commitizen还依据conventional message，创建起一个生态
 
-* [conventional-changelog-cli](https://github.com/conventional-changelog/conventional-changelog-cli)：通过提交信息生成CHANGELOG.md
-* [conventional-github-releaser](https://github.com/conventional-changelog/conventional-github-releaser)：通过提交信息生成github release中的变更描述
-* [conventional-recommended-bump](https://github.com/conventional-changelog/conventional-recommended-bump)：根据提交信息判断需要升级[Semantic Versioning](http://semver.org/)哪一位版本号
-* [validate-commit-msg](https://github.com/kentcdodds/validate-commit-msg)：检查提交信息是否符合约定
+* [conventional-changelog-cli](https://github.com/conventional-changelog/conventional-changelog-cli)：通过提交记录生成CHANGELOG.md
+* [conventional-github-releaser](https://github.com/conventional-changelog/conventional-github-releaser)：通过提交记录生成github release中的变更描述
+* [conventional-recommended-bump](https://github.com/conventional-changelog/conventional-recommended-bump)：根据提交记录判断需要升级[Semantic Versioning](http://semver.org/)哪一位版本号
+* [validate-commit-msg](https://github.com/kentcdodds/validate-commit-msg)：检查提交记录是否符合约定
 
 使用这些工具可以简化npm包的发布流程，
 
 	#! /bin/bash
-	
+
 	# https://gist.github.com/stevemao/280ef22ee861323993a0
 	# npm install -g commitizen cz-conventional-changelog trash-cli conventional-recommended-bump conventional-changelog-cli conventional-commits-detector json
 	trash node_modules &>/dev/null;
@@ -163,40 +161,36 @@ Conventional message格式是这样的
 	git push --follow-tags &&
 	npm publish
 
-运行上述脚本会更新CHANGELOG.md、升级版本号并发布新版本到npm，所有这些操作都基于提交信息自动处理。
+运行上述脚本会更新CHANGELOG.md、升级版本号并发布新版本到npm，所有这些操作都基于提交记录自动处理。
 
 ## Branching Model
 
-虽然Git仓库分布式存储于每个用户的设备上，但通常会有一个”中心“仓库（`origin`）存储生产环境代码。
-
-![centralized](/assets/git-workflow/centralized.png)
-> Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA
-
-在多人协作时，利用Git轻量的分支，可以减少代码冲突（包括文本冲突和功能冲突）。[Vincent Driessen](http://nvie.com/about/)的branching model描述了Git分支工作流程，
+[Vincent Driessen](http://nvie.com/about/)的分支模型（Branching Model）介绍Git分支和开发，部署，问题修复时的工作流程，
 
 ![workflow](/assets/git-workflow/workflow.png)
+
 > Author: Vincent Driessen Original blog post: http://nvie.com/posts/a-succesful-git-branching-model License: Creative Commons BY-SA
 
-### Workflow
+在整个开发流程中，始终存在master和develop分支，其中master分支代码和生产环境代码保持一致，develop分支还包括新功能代码。
 
-在整个开发流程中，始终存在master和develop分支，其中master分支代码和生产环境代码保持一致，develop分支除生产环境代码外还包含未发布的新功能代码。
+**分支模型主要涉及三个过程：功能开发，代码发布和问题修复**。
 
 **功能开发**
 
 1. 从develop创建一个新分支（feature/\*）
 2. 功能开发
-3. 测试
-4. *Review*
+3. 生产环境测试
+4. Review
 5. Merge回develop分支
 
 **代码发布**
 
-需要发布新功能带生产环境时
+需要发布新功能到生产环境时
 
 1. 从develop创建新分支（release/\*）
-2. 发布新分支代码到staging环境
+2. 发布feature分支代码到预上线环境
 3. 测试并修复问题
-4. *Review*
+4. Review
 5. 分别merge回develop和master分支
 6. 发布master代码到生产环境
 
@@ -205,19 +199,33 @@ Conventional message格式是这样的
 当生产环境代码出现问题需要立刻修复时
 
 1. 从master创建新分支（hotfix/\*）
-2. 修复问题并测试
-3. *Review*
-4. 分别merge会develop和master分支
-5. 发布master代码到生产环境
+2. 发布hotfix代码到预上线环境
+3. 修复问题并测试
+4. Review
+5. 分别merge会develop和master分支
+6. 发布master代码到生产环境
+
+
+
+该分支模型值得借鉴的地方包括，
+
+* **规范的分支命名**
+* **将分支和代码运行环境关联起来**
+
+分支和代码运行环境的关系是这样的，
+
+- master => 生产环境
+- release/\*，hotfix/\* => 预上线环境
+- feature/\*，develop => 开发环境
 
 ### gitflow
 
-Vincent Driessen的branching model将开发流程和Git分支很好的结合起来，但是直接使用需要在分之间来回切换。[gitflow](https://github.com/nvie/gitflow)可以帮我们处理这些琐碎的事情。
+Vincent Driessen的分支模型将开发流程和Git分支很好的结合起来，但在实际使用中涉及复杂的分支切换，[gitflow](https://github.com/nvie/gitflow)可以简化这些工作。
 
 安装并在代码仓库初始化gitflow后，就可以使用它完成分支工作流程，
 
 	$ git flow init
-	
+
 	No branches exist yet. Base branches must be created now.
 	Branch name for production releases: [master]
 	Branch name for "next release" development: [develop]
@@ -234,9 +242,9 @@ Vincent Driessen的branching model将开发流程和Git分支很好的结合起�
 开始开发时
 
 	(develop) $ git flow feature start demo
-	
+
 	Switched to a new branch 'feature/demo'
-	
+
 	Summary of actions:
 	- A new branch 'feature/demo' was created, based on 'develop'
 	- You are now on branch 'feature/demo'
@@ -244,7 +252,7 @@ Vincent Driessen的branching model将开发流程和Git分支很好的结合起�
 完成开发后
 
 	(feature/demo) $ git flow feature finish demo
-	
+
 	Switched to branch 'develop'
 	Already up-to-date.
 	Deleted branch feature/demo (was 48fbada).
@@ -259,9 +267,9 @@ Vincent Driessen的branching model将开发流程和Git分支很好的结合起�
 发布代码前
 
 	(develop) $ git flow release start demo
-	
+
 	Switched to a new branch 'release/demo'
-	
+
 	Summary of actions:
 	- A new branch 'release/demo' was created, based on 'develop'
 	- You are now on branch 'release/demo'
@@ -269,7 +277,7 @@ Vincent Driessen的branching model将开发流程和Git分支很好的结合起�
 测试完成准备上线时
 
 	(release/demo) $ git flow release finish demo
-	
+
 	Switched to branch 'master'
 	Deleted branch release/demo (was 48fbada).
 	
@@ -287,9 +295,9 @@ Vincent Driessen的branching model将开发流程和Git分支很好的结合起�
 发现线上故障时，
 
 	(master) $ git flow hotfix start demo-hotfix
-	
+
 	Switched to a new branch 'hotfix/demo-hotfix'
-	
+
 	Summary of actions:
 	- A new branch 'hotfix/demo-hotfix' was created, based on 'master'
 	- You are now on branch 'hotfix/demo-hotfix'
@@ -297,9 +305,9 @@ Vincent Driessen的branching model将开发流程和Git分支很好的结合起�
 修复问题后
 
 	(hotfix/demo-hotfix) $ git flow hotfix finish demo-hotfix
-	
+
 	Deleted branch hotfix/demo-hotfix (was 48fbada).
-	
+
 	Summary of actions:
 	- Latest objects have been fetched from 'origin'
 	- Hotfix branch has been merged into 'master'
