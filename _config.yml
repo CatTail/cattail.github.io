@@ -1,4 +1,3 @@
-# Site settings
 title: 猫尾博客
 description: > # this means to ignore newlines until "baseurl:"
     Programmer, for now.
@@ -23,7 +22,8 @@ defaults:
       lang: zh
       permalink: /:categories/:year/:month/:day/:title.html
 
-# Build settings
+sass:
+    style: compressed
 markdown: kramdown
 kramdown:
      input: GFM
