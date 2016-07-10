@@ -5,6 +5,7 @@ baseurl: "" # the subpath of your site, e.g. /blog/
 url: "https://cattail.me" # the base hostname & protocol for your site
 twitter_username: zhongchiyu
 github_username: cattail
+future: true
 
 defaults:
   -
