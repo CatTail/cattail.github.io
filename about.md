@@ -6,6 +6,7 @@ permalink: /about/
 
 ## 关于我
 
+* [Slides](http://www.slideshare.net/zhongchiyu)
 * [Douban](http://www.douban.com/people/zhongchiyu/)
 * [Github](https://github.com/cattail)
 * [Twitter](https://twitter.com/zhongchiyu)
