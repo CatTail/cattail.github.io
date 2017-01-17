@@ -1,0 +1,24 @@
+{
+  "name": "how-https-works",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "DEBUG=* nodemon src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CatTail/https.git"
+  },
+  "author": "zhongchiyu@gmail.com",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "debug": "^2.6.0",
+    "debug-stream": "^3.0.1",
+    "pem": "^1.9.4"
+  },
+  "devDependencies": {
+    "nodemon": "^1.11.0"
+  }
+}
