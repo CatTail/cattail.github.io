@@ -4,7 +4,7 @@ title: Lab
 permalink: /lab/
 ---
 
-## Rssify
+## [Rssify](https://rssify.now.sh)
 
 * Source:: [Rssify](https://github.com/CatTail/rssify)
 
