@@ -10,6 +10,7 @@ permalink: /about/
 * [Douban](http://www.douban.com/people/zhongchiyu/)
 * [Github](https://github.com/cattail)
 * [Twitter](https://twitter.com/zhongchiyu)
+* [Instagram](https://www.instagram.com/zhongchiyu/)
 * [Email](mailto:zhongchiyu@gmail.com)
 
 ## 关于博客
