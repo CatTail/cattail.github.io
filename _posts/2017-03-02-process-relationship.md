@@ -1,7 +1,7 @@
 ---
 layout: post
-title: 关于进程之间关系的总结
-description: 关于进程，进程组，会话和任务管理的学习总结
+title: 对进程关系的总结
+description: 对进程，进程组，会话和任务管理的学习总结
 date: 2017-03-02 07:35
 categories: tech
 ---
