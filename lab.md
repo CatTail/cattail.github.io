@@ -4,7 +4,7 @@ title: Lab
 permalink: /lab/
 ---
 
-## [ScoreHub](https://scorehub.now.sh/)
+## [ScoreHub](https://scorehub.cattail.me/)
 
 Working In Progress Interest Network.
 
