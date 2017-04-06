@@ -6,6 +6,8 @@ permalink: /lab/
 
 ## [ScoreHub](https://scorehub.cattail.me/)
 
+* Homepage: [ScoreHub](https://scorehub.cattail.me/)
+
 Working In Progress Interest Network.
 
 ## [Rssify](https://rssify.now.sh)
