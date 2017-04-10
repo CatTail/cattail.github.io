@@ -29,6 +29,7 @@ layout: default
       {% if post.description %}
         <p class="post-summary">{{ post.description }}</p>
       {% endif %}
+      <div class="scorehub" data-type="like" data-count="true" data-loc="{{ post.url | prepend: site.baseurl | prepend: site.url }}"></div>
     </div>
     {% endfor %}
   </div>
