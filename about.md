@@ -23,7 +23,3 @@ permalink: /about/
 
 * [yue.css](http://lab.lepture.com/yue.css/)
 * [pixyll](https://github.com/johnotander/pixyll)
-
-## 友情链接
-
-* [My love](https://tengyue.me/)
