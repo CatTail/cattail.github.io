@@ -5,7 +5,6 @@ description: The post was first published at Tubi Engineering Blog https://code.
 date: 2018-04-05 12:00
 categories: tech
 ---
-### Terraforming Tubi TV
 
 ![img](https://cdn-images-1.medium.com/max/2000/1*Uk2P6KksdGSjkel0bdVsEg.png)
 
