@@ -6,7 +6,7 @@ date: 2018-04-05 12:00
 categories: tech
 ---
 
-![img](https://cdn-images-1.medium.com/max/2000/1*Uk2P6KksdGSjkel0bdVsEg.png)
+![tcp ip model](/assets/terraforming-tubitv.png)
 
 > Terraform makes it easy to manage tens of thousands of infrastructure components and even [visualize it](https://github.com/28mm/blast-radius)
 
