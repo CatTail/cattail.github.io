@@ -59,8 +59,6 @@ Looks like Consul agent resolve every DNS by making RPC call to Consul server. I
 * It **looks slow**
 * Consul server will be the bottleneck, consider we have dozen of services resolve tens of thousands of DNS every seconds
 
-// TODO(Chiyu): how Consul client and server works and why every DNS resolving require an rpc call to server
-
 ## Add DNS cache for Consul
 
 Consul allow you to [configure DNS TTL values](https://www.consul.io/docs/guides/dns-cache.html) with simple config, you also need to [setup an local caching name server like Dnsmasq](https://www.consul.io/docs/guides/forwarding.html#dnsmasq-setup) to make TTL actually works.
