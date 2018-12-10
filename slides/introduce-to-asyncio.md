@@ -5,7 +5,7 @@ class: center, middle, inverse
 ---
 # 异步 I O 初探
 
-.footnote[By [CatTail](https://github.com/cattail)]
+.footnote[By [CatTail](https://cattail.me)]
 
 ---
 layout: false
