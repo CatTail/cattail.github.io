@@ -5,7 +5,7 @@ class: center, middle, inverse
 ---
 # Introduce to Javascript
 
-.footnote[By [CatTail](https://github.com/cattail)]
+.footnote[By [CatTail](https://cattail.me)]
 
 ---
 layout: false
