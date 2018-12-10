@@ -28,3 +28,4 @@ sass:
 markdown: kramdown
 kramdown:
      input: GFM
+exclude: [vendor]
