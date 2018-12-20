@@ -33,6 +33,7 @@ Hashicorp also develop
 ## What is Consul
 
 Consul is a service mesh solution providing a full featured control plane with **service discovery**, **configuration**, and **segmentation** functionality.
+> From https://www.consul.io/intro/index.html
 
 ---
 ## Why do I care
@@ -40,21 +41,10 @@ Consul is a service mesh solution providing a full featured control plane with *
 Frontend team use Consul to discover backend services, and use health checks to register themselves.
 
 Data team use Consul to discover backend services to read and write data.
- 
+
 Backend team use Consul for service discovery, health checks and key value store.
 
 Client developers don't use Consul directly, but your request is handled by [NGINX resolved by Consul](https://www.nginx.com/blog/service-discovery-nginx-plus-srv-records-consul-dns/).
-
----
-## Why do I care
-
-Why I can't resolve service DNS?
-
-[Why I experience traffic spike using Consul](https://cattail.me/tech/2018/11/22/consul-dns-cache.html)?
-
-How to minimize production impact on certain node fails?
-
-How to direct traffic to certain nodes on the fly for testing and debugging?
 
 ---
 ## How it lives in our stack
@@ -62,6 +52,17 @@ How to direct traffic to certain nodes on the fly for testing and debugging?
 Client -> Route 53 -> NGINX -> Consul -> Frontend services -> Consul/Envoy -> Backend services
 
 <img src="/assets/introduce-to-consul/stack.png" width="800"></img>
+
+---
+## Why do I care
+
+After this talk, you should be able to answer the following questions
+
+* Why I can't resolve service DNS?
+* [Why I experience traffic spike using Consul](https://cattail.me/tech/2018/11/22/consul-dns-cache.html)?
+* How to minimize production impact on certain node fails?
+* How to direct traffic to certain nodes on the fly for testing and debugging?
+* etc
 
 ---
 template: inverse
@@ -96,6 +97,8 @@ The catalog is maintained only by server nodes.
 Agent maintain service and check registrations as well as health information, is responsible for executing health checks and updating their local state.
 
 This catalog is formed by aggregating information submitted by the agents.
+
+**How to provide consistency and availability for Consul Server?**
 
 ---
 ## Consensus Protocol
