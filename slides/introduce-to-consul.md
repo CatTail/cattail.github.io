@@ -147,7 +147,6 @@ Multicast and Infection-Style Dissemination Component
 The SWIM protocol layer at each group member maintains a buffer of recent membership updates, along with a local count for each buffer element. 
 The local count speciﬁes the number of times the element has been piggybacked so far by , and is used to choose which elements to piggyback next.
 
-
 ---
 ## Wrap up
 
@@ -155,5 +154,15 @@ Consul provide service discovery and KV storage.
 
 Service discovery is implemented as catalog backed by Consensus Protocol.
 
-**Catalog is mainly built on agent update their local state to Consul server, Gossip Protocol only involed in bootstrap and fire events.** 
+**Catalog is mainly built on agent update their local state to Consul server, Gossip Protocol only involed in bootstrap and fire events.**
 
+Referrences
+
+* [Consul Docs](https://www.consul.io/docs/index.html)
+* [Raft](https://raft.github.io)
+* [SWIM](http://www.cs.cornell.edu/info/projects/spinglass/public_pdfs/swim.pdf)
+
+---
+template: inverse
+
+## Q && A
