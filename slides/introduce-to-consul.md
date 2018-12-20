@@ -72,7 +72,8 @@ template: inverse
 
 ## Architecture
 
-<img src="/assets/introduce-to-consul/consul-arch.png" width="500" style="display: block; margin-left: auto; margin-right: auto;"></img>
+<img src="/assets/introduce-to-consul/consul-arch.png" width="400" style="display: block; margin-left: auto; margin-right: auto;"></img>
+> From https://www.consul.io/docs/internals/architecture.html
 
 ---
 ## Architecture
@@ -104,6 +105,7 @@ Consul uses a consensus protocol to provide [Consistency (as defined by CAP)](ht
 > In particular, the CAP theorem implies that in the presence of a network partition, one has to choose between consistency and availability.
 
 <img src="/assets/introduce-to-consul/cap.png" width="400"></img>
+> From https://snarfed.org/transactions_across_datacenters_io.html
 
 The catalog is replicated via the Raft log to provide a consolidated and consistent view of the cluster.
 
@@ -138,6 +140,7 @@ Thirdly, it is used as a messaging layer to notify when important events such as
 ## Failure Detector Component
 
 <img src="/assets/introduce-to-consul/swim-ping.png" width="500"></img>
+> From http://www.cs.cornell.edu/info/projects/spinglass/public_pdfs/swim.pdf
 
 ---
 ## Dissemination Component
