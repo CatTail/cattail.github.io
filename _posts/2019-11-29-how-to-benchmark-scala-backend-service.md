@@ -1,31 +1,32 @@
 ---
 layout: post
-title: Benchmark Scala Backend Service
+title: Benchmark Backend Service
 date: 2019-11-29 13:44
 categories: tech
 ---
 
 Tubi streams thousand of free movies and TV shows to our users, personalize recommendation is one of the core user
  experience. Tubi have run offline recommendation in production for a long time, recently we launch our first real time
- model that calculate user recommendations in runtime instead of offline batch jobs.
+ model that calculate user recommendations in real time instead of offline batch jobs.
 
-To support RealTimeModelServing, we need to build a machine learning pipeline export model file and publish feature
- data, and build a backend service serving user request, compute recommendation with exported model and feature data.
+To support real time model serving, we need to build a machine learning pipeline export models and publish feature data,
+ and build a backend service serving user request, compute recommendation with exported model and feature data in real 
+ time.
  
-One of the challenge to build the backend service is, compute recommendation is much slower compare to precomputed
- recommendation, and it consume quite a lot memory and CPU resources. Scala is our choice when build data related
- infrastructure, This blog post explain how we benchmark the backend service to make sure it match our latency, 
- throughput and error rate requirement. 
+One of the challenge to build the real time serving backend service is, compute recommendation is much slower compare 
+ to precomputed recommendation, it also consume quite a lot memory and CPU resources. Scala is our choice when build 
+ data related infrastructure, this blog post explain how we benchmark the backend service to make sure it match our 
+ business requirement. 
 
 ## Microbenchmark
 
-Microbenchmark is A benchmark designed to measure the performance of a very small and specific piece of code.
+Microbenchmark is a benchmark designed to measure the performance of a very small and specific piece of code.
  As mentioned above, compute recommendation is much slower compare to precomputed recommendation, we want to have sense
- how slow it will be before start implementing backend service, if compute recommendation for a single request takes
- around 200 milliseconds, that means each personalized request are expecting 200ms latency increase, this is something
+ how slow it will be before start implementing backend service, if a single recommendation calculation takes around 
+ 200 milliseconds, that means each personalized request are expecting at least 200ms latency increase, this is something
  unacceptable.
  
-We use ScalaMeter to microbenchmark model execution performance,
+We use [ScalaMeter](http://scalameter.github.io/) to microbenchmark model execution performance,
 
 ```scala
 val sizes = Gen.range("size")(1000, 10000, 1000)
@@ -54,31 +55,65 @@ Test group: RealTimeModelServing.predict
   - at size -> 2000: passed
     (mean = 44.48 ms, ci = <40.30 ms, 48.66 ms>, significance = 1.0E-10)
   - at size -> 3000: passed
-    (mean = 74.69 ms, ci = <50.43 ms, 98.95 ms>, significance = 1.0E-10)
-  - at size -> 4000: passed
-    (mean = 97.26 ms, ci = <82.89 ms, 111.62 ms>, significance = 1.0E-10)
-  - at size -> 5000: passed
-    (mean = 111.29 ms, ci = <99.73 ms, 122.85 ms>, significance = 1.0E-10)
-  - at size -> 6000: passed
-    (mean = 134.31 ms, ci = <122.10 ms, 146.51 ms>, significance = 1.0E-10)
-  - at size -> 7000: passed
-    (mean = 154.03 ms, ci = <144.05 ms, 164.01 ms>, significance = 1.0E-10)
-  - at size -> 8000: passed
-    (mean = 172.68 ms, ci = <162.68 ms, 182.69 ms>, significance = 1.0E-10)
+...
   - at size -> 9000: passed
     (mean = 195.98 ms, ci = <185.69 ms, 206.27 ms>, significance = 1.0E-10)
   - at size -> 10000: passed
     (mean = 222.22 ms, ci = <197.03 ms, 247.41 ms>, significance = 1.0E-10)
 ```
 
-The benchmark result shows that with a input have 1,000 rows, it takes 23.57ms in mean time to execute the model, 
- the result looks ok, we can start implement the backend service.
+The benchmark result shows that 1,000 rows input takes 23.57ms in mean time to execute the model, 
+ the result looks ok, we can start implementing an PoC backend service.
 
-## HTTP Benchmark
+## Load Testing
 
+Load testing simulate multiple user accessing the service, to see how fast service can respond under stress.
 
+### Basics
 
-* Resource usage: CPU, Memory, Network, Disk
-* Latency
-* Throughput
-* Error Rate
+Three load testing metrics can be used to describe the performance and correctness of the service
+
+* **Latency** is how fast a service respond to client, typically measured in milliseconds, instead of using average, latency usually
+ measured in **percentiles**, 99 percentiles is 100ms means 99% of the request returned within 100ms, it also described as P99
+* **Throughput** is how many request a service can process in certain amount of time, usually measured as **requests per second** 
+* **Error Rate** is how many request failed in certain amount of time, it describe the correctness of a service under load
+
+These metrics can affect each other, higher throughput typically means higher latency and higher error rate.
+
+![throughput-latency-graph](/assets/benchmark-backend-service/throughput-latency-graph.png)
+
+Beside from latency, throughput and error rate, we should also monitor server resource(CPU, memory etc) during load testing, ideally
+ we want to build a service satisfy throughput, latency requirement using the least money.
+
+### Plan
+
+With the above metrics in mind, a general load testing include following steps
+
+1. define service throughput, latency and error rate requirement
+1. implement the (PoC) service
+1. load testing the target service multiple times, gradually increasing load
+1. record throughput, latency, error rate and server resource metrics under different load
+1. based on recorded metrics, decide if the service match our requirement, what's the 
+ maximum service capacity and which instance type is suitable for the service
+
+### Result
+
+There are many open source software available for load testing, take a look at [awesome-http-benchmark](https://github.com/denji/awesome-http-benchmark)
+ repo to see which one fit your requirement.
+
+We use [wrk2](https://github.com/giltene/wrk2) to load testing the service, wrk2 is a modify version of [wrk](https://github.com/wg/wrk),
+ it support `--rate` option to specific throughput argument.
+
+ 
+
+## A little story about wrk and wrk2
+
+TOOD(Chiyu): introduce wrk, the problem with wrk and introduce wrk2
+
+https://github.com/giltene/wrk2
+
+https://github.com/wg/wrk/issues/323
+
+> the naming of "wrk2" is unfortunate, it's evolved into a very different tool based on generating load at a constant rate 
+> and can only record latencies at millisecond granularity. Whereas wrk generates load as fast as possible and tracks latency 
+> at the microsecond level.
