@@ -1,9 +1,9 @@
-----
+---
 layout: post
 title: Introduction to Service Benchmark
 date: 2019-11-29 13:44
 categories: tech
-----
+---
 
 Tubi streams thousand of free movies and TV shows to our users, personalize recommendation is one of the core user experiences. Tubi have run offline recommendation in production for a long time, recently we launched our first real-time model that calculate user recommendations in real-time instead of offline batch jobs.
 
@@ -62,7 +62,7 @@ Load testing simulates multiple users accessing the service, to see how fast ser
 
 Three load testing metrics can be used to describe the performance and correctness of the service
 
-* **Latency** is how fast a service respond to the client, typically measured in milliseconds, instead of using average, latency usually measured in **percentiles**, 99 percentiles is 100ms means 99% of the request returned within 100ms, it also described as P99
+* **Latency** is how fast a service responds to the client, typically measured in milliseconds, instead of using average, latency usually measured in **percentiles**, 99 percentiles is 100ms means 99% of the request returned within 100ms, it also described as P99
 * **Throughput** is how many requests a service can process in a certain amount of time, usually measured as **requests per second** 
 * **Error Rate** is how many requests failed in a certain amount of time, it describes the correctness of service under load
 
@@ -209,6 +209,9 @@ $ autobench --verbose --connection 8 --thread 4 --duration 1m \
             --script wrk.lua --warmup_duration 1m --low_rate 10 \
             --high_rate 20 --rate_step 10 http://example.com/
 ```
+
+![latency-by-rate](/assets/benchmark/latency-by-rate.png)
+![throughput-by-rate](/assets/benchmark/throughput-by-rate.png)
 
 ### A little story about wrk and wrk2
 
