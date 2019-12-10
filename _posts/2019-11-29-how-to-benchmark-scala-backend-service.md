@@ -97,7 +97,7 @@ With the above metrics in mind, a general load testing include following steps
 1. based on recorded metrics, decide if the service match our requirement, what's the 
  maximum service capacity and which instance type is suitable for the service
 
-### Benchmark
+### Test
 
 There are many open source software available for load testing, take a look at [awesome-http-benchmark](https://github.com/denji/awesome-http-benchmark)
  repo to see which one fit your requirement.
@@ -126,9 +126,7 @@ $ wrk --latency -c 8 -t 4 -d 1m -R 100 -s wrk.lua http://localhost:8080/predicto
   Non-2xx or 3xx responses: 835
 Requests/sec:    100.05
 Transfer/sec:    675.88KB
-```
 
-```
 $ wrk --latency -c 8 -t 4 -d 1m -R 200 -s wrk.lua http://localhost:8080/predictor/v1/get-ranking
 ...
  50.000%   33.44ms
@@ -144,9 +142,7 @@ $ wrk --latency -c 8 -t 4 -d 1m -R 200 -s wrk.lua http://localhost:8080/predicto
   Non-2xx or 3xx responses: 1743
 Requests/sec:    199.96
 Transfer/sec:      1.31MB
-```
 
-```
 $ wrk --latency -c 8 -t 4 -d 1m -R 300 -s wrk.lua http://localhost:8080/predictor/v1/get-ranking
 ...
   Latency Distribution (HdrHistogram - Recorded Latency)
@@ -173,7 +169,7 @@ Real time serving service is a CPU intensive application, we use [USE method](ht
  and `vmstat 1` to verify that CPU usage is saturation and can not handle this load, we need to scale out the service 
  to match our requirement.
 
-### Multi host benchmark
+### Multi host test
 
 After scala out the service to 4 nodes, we also need to modify wrk2 benchmark script to distribute the traffic to 
  multiple hosts.
@@ -205,10 +201,6 @@ The benchmark result shows that after scale out, the service can handle traffic 
 
 ```
 $ wrk --latency -c 8 -t 4 -d 1m -R 300 -s wrk.lua http://predictor-http.service.tubi:8080/predictor/v1/get-ranking
-thread addr: 172.30.26.254:8080
-thread addr: 172.30.21.44:8080
-thread addr: 172.30.45.157:8080
-thread addr: 172.30.45.42:8080
 ...
   Latency Distribution (HdrHistogram - Recorded Latency)
  50.000%   25.55ms
@@ -228,13 +220,14 @@ Transfer/sec:      1.95MB
 
 ### Autobench2
 
-To simplify the above benchmark process, we write a single perl script based on [Autobench](http://www.xenoclast.org/autobench/).
- The script take care of things like warmup, gradually increase load, generate result that can draw throughput latency graph on web pages.  
+To simplify the above load testing process, we write a single python wrapper around wrk2,
+ the script take care of things like warmup, gradually increase load, generate result and draw
+ throughput latency graph on web pages.
 
 ```
-$ autobench --single_host --host1 www.test.com --uri1 /10K --quiet     \
-            --low_rate 20 --high_rate 200 --rate_step 20 --num_call 10 \
-            --num_conn 5000 --timeout 5 --file results.tsv 
+$ autobench --verbose --connection 8 --thread 4 --duration 1m \
+            --script wrk.lua --warmup_duration 1m --low_rate 10 \
+            --high_rate 20 --rate_step 10 http://example.com/
 ```
 
 ### A little story about wrk and wrk2
@@ -248,6 +241,7 @@ $ autobench --single_host --host1 www.test.com --uri1 /10K --quiet     \
 
 ## Useful links
 
+* [Autobench2](https://github.com/CatTail/autobench2/)
 * [An Introduction to Load Testing](https://www.digitalocean.com/community/tutorials/an-introduction-to-load-testing)
 * [HTTP Benchmark Rules](https://www.mnot.net/blog/2011/05/18/http_benchmark_rules)
 * [Linux Performance Tools](https://cdn.oreillystatic.com/en/assets/1/event/122/Linux%20perf%20tools%20Presentation.pdf)
