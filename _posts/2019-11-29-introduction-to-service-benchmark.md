@@ -68,7 +68,7 @@ Three load testing metrics can be used to describe the performance and correctne
 
 These metrics can affect each other, higher throughput typically means higher latency and higher error rate.
 
-![throughput-latency-graph](/assets/benchmark-backend-service/throughput-latency-graph.png)
+![throughput-latency-graph](/assets/benchmark/throughput-latency-graph.png)
 
 Beside from latency, throughput and error rate, we should also monitor server resource(CPU, memory, etc) during load testing, ideally
  we want to build a service satisfy throughput, latency requirement using the least money.
