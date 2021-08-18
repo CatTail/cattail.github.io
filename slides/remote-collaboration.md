@@ -23,7 +23,7 @@ layout: false
 
 * communication delay
   * do not expect an instant response
-  * message may lost in the middle of chaos
+  * message may lose in the middle of chaos
   * timezone difference
 * misunderstanding
   * culture and language
