@@ -137,6 +137,14 @@ Face to face communication is an interrupt signal, context switch is expensive.
 
 ## Build Conventions
 
+![Preferred Chat System](https://imgs.xkcd.com/comics/preferred_chat_system.png)
+
+https://xkcd.com/1254/
+
+---
+
+## Build Conventions
+
 * every message should self-contained
   * context: 5 Ws
     * Who
@@ -172,6 +180,14 @@ There is no one there to motivate you do something
 template: inverse
 
 ## Synchronous Communication: Anti-Entropy
+
+---
+
+## Synchronous Communication: Anti-Entropy
+
+![Misinterpretation](https://imgs.xkcd.com/comics/misinterpretation.png)
+
+https://xkcd.com/1984/
 
 ---
 
