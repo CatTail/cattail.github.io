@@ -145,24 +145,22 @@ https://xkcd.com/1254/
 
 ## Build Conventions
 
-* every message should self-contained
+* message should self-contained
   * context: 5 Ws
     * Who
     * What
     * When
     * Where
     * Why
-* every message need to take action
-  * Email example
+* message should take action
+  * Email/Slack example
   * PR looks good but never approved
 * same workflow
-  * I know you know
   * Duplicate notification example
   * Changes merged to master should always deployed to production
 * status
   * online status
   * PTO
-  * let your coworkers know
 
 ---
 
